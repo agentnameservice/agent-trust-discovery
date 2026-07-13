@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/agentnameservice/agent-trust-discovery/compare/v0.1.0...v0.1.1) (2026-07-13)
+
+
+### Documentation
+
+* reframe README around Agent Trust Discovery ([#2](https://github.com/agentnameservice/agent-trust-discovery/issues/2)) ([d96bd0e](https://github.com/agentnameservice/agent-trust-discovery/commit/d96bd0e7074dfbf87677948d1418f04db6760868))
+
 ## 0.1.0 (2026-07-07)
 
 Initial public release of **agent-trust-discovery**, the Trust Index Reference
