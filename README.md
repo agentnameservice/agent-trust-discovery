@@ -1,29 +1,30 @@
-# agent-trust-discovery — Trust Index Reference Implementation
+# Agent Trust Discovery
 
-`agent-trust-discovery` is an open-source Go reference implementation of the ANS
-**Search / Trust Index API**. It indexes registered AI agents and answers one
+**Agent Trust Discovery** is an open-source Go reference implementation of a
+**Trust Index** for AI agents. It indexes registered agents and answers one
 question for each of them — *"why does this agent score what it does?"* — by
 computing a per-agent **Trust Vector** across the five dimensions defined by the
 Trust Index specification (`integrity`, `identity`, `solvency`, `behavior`,
-`safety`), each scored as an integer `0–100`, and serving
-production-compatible search and detail endpoints.
+`safety`), each scored as an integer `0–100`, and serving search and detail
+endpoints.
 
-It is the discovery-and-trust side companion to the
-[Agent Name Service (ANS)](https://github.com/agentnameservice/ans): where
-`ans` **registers and cryptographically verifies** agents by name (a
-Registration Authority + an append-only transparency log), `agent-trust-discovery`
-**indexes those agents and scores their trustworthiness** for consumers who are
-deciding whether — and how far — to trust an agent they discovered.
+Agent Trust Discovery is the discovery-and-trust half of an agent-identity
+stack. A registry — such as the
+[Agent Name Service (ANS)](https://github.com/agentnameservice/ans) —
+**registers and cryptographically verifies** agents by name (a Registration
+Authority + an append-only transparency log); Agent Trust Discovery **indexes
+those agents and scores their trustworthiness** for consumers who are deciding
+whether — and how far — to trust an agent they discovered.
 
 Pedagogy is the top goal. Every signal contributes an integer score, an active
 weight, and a human-readable explanation, all surfaced in the public API
 response, so the scoring is never a black box.
 
 > **Reference implementation, not production.** The eight built-in signals and
-> their score curves are deliberately simplified for clarity. `agent-trust-discovery` is
-> independent of any specific Agent Identity Management (AIM) stack — it ingests
-> observations through a documented HTTP import contract, not through coupling
-> to a particular upstream.
+> their score curves are deliberately simplified for clarity. Agent Trust
+> Discovery is independent of any specific agent registry or Agent Identity
+> Management (AIM) stack — it ingests observations through a documented HTTP
+> import contract, not through coupling to a particular upstream.
 
 ## Binaries
 
@@ -31,7 +32,7 @@ response, so the scoring is never a black box.
 | --- | --- | --- |
 | `agent-trust-discovery` | 8080 | The HTTP server — read API, admin import API, SQLite + FTS5 storage, scoring engine, signal registry, scoring-profile model |
 | `agent-hydrator-stub` | — | The worked-example **hydrator** (Bootstrap archetype): reads fixtures, computes drift verdicts locally, and POSTs observations to `agent-trust-discovery`. Powers `make demo` |
-| `agent-snapshot` | — | Live-pipeline capture step: pulls the production GoDaddy Search API and Transparency Log, writes fixture YAML the hydrator/prober consume unchanged. Powers `make demo-live` |
+| `agent-snapshot` | — | Live-pipeline capture step: pulls a live agent registry's public Search API and Transparency Log, writes fixture YAML the hydrator/prober consume unchanged. Powers `make demo-live` |
 | `agent-prober` | — | Optional real-signal producer (AIM archetype): keeps the sealed baseline from the fixture but produces the live side from **real DNS queries and TLS handshakes**. Off by default; exercised by `make demo-live` |
 
 `agent-trust-discovery` is the only binary that holds state; the other two are evidence
@@ -72,12 +73,14 @@ The walkthrough (`scripts/demo/walkthrough.sh`) demonstrates:
 ## Live demo (`make demo-live` — real prod data, real DNS + TLS probes)
 
 `make demo` is fully offline against curated fixtures. **`make demo-live`**
-captures a fresh snapshot from production — the public GoDaddy ANS **Search
+captures a fresh snapshot from a live production registry — the public **Search
 API** (`GET /v1/ans/registered-agents`) and **Transparency Log**
-(`GET /v1/agents/{ansId}`) — and runs the same hydrator → prober → walkthrough
-pipeline against it. The prober's `expected` baseline comes from the
-TL-sealed attestations; its `observed` side comes from real DNS TXT lookups
-and TLS handshakes against the captured agents' actual hosts.
+(`GET /v1/agents/{ansId}`) of GoDaddy's
+[ANS](https://github.com/agentnameservice/ans) deployment — and runs the same
+hydrator → prober → walkthrough pipeline against it. The prober's `expected`
+baseline comes from the TL-sealed attestations; its `observed` side comes from
+real DNS TXT lookups and TLS handshakes against the captured agents' actual
+hosts.
 
 ```bash
 make demo-live                  # default: capture 5 agents, run the eight-stop walkthrough
@@ -196,7 +199,8 @@ from `recommendedProfile`, which is the spec's output classification.
 
 `spec/api-spec-search.yaml` is the canonical OpenAPI contract.
 
-**Read endpoints** (mirror production verbatim; no auth in v1):
+**Read endpoints** (no auth in v1; wire-compatible with the ANS production
+Search API, hence the `/v1/ans/*` path prefix):
 
 ```
 GET  /v1/ans/registered-agents             # search via query params
@@ -216,9 +220,9 @@ Errors are RFC 7807 `application/problem+json`; clients read the `code` field.
 
 ## Architecture
 
-Hexagonal / ports-and-adapters, mirroring the `ans` repo's shape. The domain
-model (`internal/domain`) has zero infrastructure dependencies. The defining
-boundary is the **producer ↔ Trust-Index split across an HTTP edge**:
+Hexagonal / ports-and-adapters. The domain model (`internal/domain`) has zero
+infrastructure dependencies. The defining boundary is the
+**producer ↔ Trust-Index split across an HTTP edge**:
 
 ```
   Evidence producers (untrusted side)          agent-trust-discovery (the binary)
@@ -307,5 +311,4 @@ Manifest / Trust Card ingestion, and production-grade auth adapters.
 
 ## License
 
-MIT License — see [`LICENSE`](LICENSE). Matches the
-[ANS project](https://github.com/agentnameservice/ans).
+MIT License — see [`LICENSE`](LICENSE).
