@@ -1,0 +1,22 @@
+# Brand new, high version churn — young and volatile.
+ansId: agent-003
+status: ACTIVE
+providerId: newstartup
+firstSeen: 2026-06-20T10:00:00Z
+lastUpdated: 2026-06-24T08:00:00Z
+agent:
+  host: api.newstartup.io
+  version: v0.1.0
+  name: Newstartup Assistant
+  description: General-purpose assistant (early access)
+  tags: [assistant, beta]
+  capabilities: [chat, summarize]
+  endpoints:
+    - { protocol: A2A, transport: HTTP, url: https://api.newstartup.io/a2a }
+attestations:
+  serverCert:   { fingerprint: "SHA256:3030303030303030303030303030303030303030303030303030303030303030" }
+  identityCert: { fingerprint: "SHA256:3131313131313131313131313131313131313131313131313131313131313131" }
+  dnsRecordsProvisioned:
+    _ans: "v=ans1; version=v0.1.0; url=https://api.newstartup.io"
+    _ans-badge: "v=ans-badge1; level=bronze"
+  dnssecStatus: signed

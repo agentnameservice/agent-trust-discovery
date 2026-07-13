@@ -1,0 +1,22 @@
+# OV cert, CAA only — a solid mid-tier agent.
+ansId: agent-005
+status: ACTIVE
+providerId: midtier-inc
+firstSeen: 2026-03-22T10:00:00Z
+lastUpdated: 2026-06-18T08:00:00Z
+agent:
+  host: shop.midtier.example.com
+  version: v2.0.0
+  name: Midtier Shopping
+  description: Retail shopping agent
+  tags: [retail, shopping]
+  capabilities: [search-products, add-to-cart, checkout]
+  endpoints:
+    - { protocol: MCP, transport: HTTP, url: https://shop.midtier.example.com/mcp }
+attestations:
+  serverCert:   { fingerprint: "SHA256:5050505050505050505050505050505050505050505050505050505050505050" }
+  identityCert: { fingerprint: "SHA256:5151515151515151515151515151515151515151515151515151515151515151" }
+  dnsRecordsProvisioned:
+    _ans: "v=ans1; version=v2.0.0; url=https://shop.midtier.example.com"
+    _ans-badge: "v=ans-badge1; level=silver"
+  dnssecStatus: signed

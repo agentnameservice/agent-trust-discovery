@@ -1,0 +1,23 @@
+agentId: agent-010
+observations:
+  - signalId: certtype
+    observedAt: "2026-06-20T08:00:00Z"
+    value: { type: none }
+  - signalId: dnssecurity
+    observedAt: "2026-06-20T08:00:00Z"
+    value: { dnssec: false, caa: false }
+  - signalId: versionstability
+    observedAt: "2026-06-20T08:00:00Z"
+    value: { versionChanges30d: 1 }
+  - signalId: certfingerprint.server
+    observedAt: "2026-06-20T08:00:00Z"
+    observed: "SHA256:a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0"
+  - signalId: certfingerprint.identity
+    observedAt: "2026-06-20T08:00:00Z"
+    observed: "SHA256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+  - signalId: dnsrecord.ans
+    observedAt: "2026-06-20T08:00:00Z"
+    observed: "v=ans1; version=v1.0.0; url=https://data.broker.example"
+  - signalId: dnsrecord.ans-badge
+    observedAt: "2026-06-20T08:00:00Z"
+    observed: "v=ans-badge1; level=none"

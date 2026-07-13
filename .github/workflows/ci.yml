@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: build & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # full history for `git describe`
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod # tracks the `go` directive (1.26)
+
+      - name: build
+        run: make build
+
+      - name: fmt
+        run: make fmt
+
+      - name: vet
+        run: make vet
+
+      - name: test-cover
+        run: make test-cover
+
+      - name: test-race
+        run: make test-race
+
+      - name: upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.out
+          retention-days: 30
+
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      # Third-party action pinned to a full commit SHA — GitHub-owned actions/*
+      # are trusted at tag granularity, but a third-party retag is the exact
+      # supply-chain risk this pin closes. Trailing comment tracks the
+      # human-readable version; bump both together.
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # v9.2.1
+        with:
+          version: v2.11.4 # must match GOLANGCI_LINT_VERSION in the Makefile
+          # PR runs report only new issues (ergonomic — don't fail a PR on
+          # latent issues in files it didn't touch). Push runs to main/dev
+          # lint the WHOLE tree so those latent issues stay gated somewhere:
+          # otherwise a bug introduced in file B via a PR that only touched
+          # file A would never be caught.
+          only-new-issues: ${{ github.event_name == 'pull_request' }}
+          args: --verbose

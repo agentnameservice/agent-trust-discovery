@@ -1,0 +1,240 @@
+# golangci-lint config for agent-trust-discovery.
+# Adapted from the sibling `ans` repo's config (the design's quality-bar
+# pattern source). v2 schema; pinned version lives in the Makefile + CI.
+# Logging is log/slog (design §5.6), so depguard bans stdlib `log` outside
+# main — consistent with `ans`.
+
+version: "2"
+
+issues:
+  max-same-issues: 50
+
+formatters:
+  enable:
+    - goimports
+  settings:
+    goimports:
+      # Explicit (even empty) keeps the v2.10+ schema validator happy.
+      local-prefixes: []
+
+linters:
+  enable:
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - canonicalheader
+    - copyloopvar
+    - cyclop
+    - depguard
+    - durationcheck
+    - errcheck
+    - errname
+    - errorlint
+    - exhaustive
+    - exptostd
+    - fatcontext
+    - forbidigo
+    - funcorder
+    - funlen
+    - gocheckcompilerdirectives
+    - gochecknoglobals
+    - gochecknoinits
+    - gochecksumtype
+    - goconst
+    - gocritic
+    - gocyclo
+    - godox
+    - gomoddirectives
+    - goprintffuncname
+    - gosec
+    - govet
+    - iface
+    - ineffassign
+    - interfacebloat
+    - intrange
+    - loggercheck
+    - makezero
+    - mirror
+    - musttag
+    - nakedret
+    - nestif
+    - nilerr
+    - nilnesserr
+    - nilnil
+    - noctx
+    - nolintlint
+    - nonamedreturns
+    - nosprintfhostport
+    - perfsprint
+    - prealloc
+    - predeclared
+    - reassign
+    - recvcheck
+    - revive
+    - rowserrcheck
+    - sloglint
+    - sqlclosecheck
+    - staticcheck
+    - testableexamples
+    - testifylint
+    - tparallel
+    - unconvert
+    - unparam
+    - unused
+    - usestdlibvars
+    - usetesting
+    - wastedassign
+    - whitespace
+
+  settings:
+    cyclop:
+      max-complexity: 30
+      package-average: 10.0
+
+    depguard:
+      rules:
+        "deprecated":
+          files:
+            - "$all"
+          deny:
+            - pkg: github.com/golang/protobuf
+              desc: Use google.golang.org/protobuf instead
+            - pkg: github.com/satori/go.uuid
+              desc: Use github.com/google/uuid instead, satori's package is not maintained
+        "non-test files":
+          files:
+            - "!$test"
+          deny:
+            - pkg: math/rand$
+              desc: Use math/rand/v2 instead, see https://go.dev/blog/randv2
+        "non-main files":
+          files:
+            - "!**/main.go"
+          deny:
+            - pkg: log$
+              desc: Use log/slog instead, see https://go.dev/blog/slog
+
+    errcheck:
+      check-type-assertions: true
+
+    exhaustive:
+      check:
+        - switch
+        - map
+      # Lets predicate-style switches return a default without enumerating
+      # every enum value (used by the §4.6 classify cascade).
+      default-signifies-exhaustive: true
+
+    funcorder:
+      struct-method: false
+
+    funlen:
+      lines: 130
+      statements: 60
+
+    gocritic:
+      settings:
+        captLocal:
+          paramsOnly: false
+        underef:
+          skipRecvDeref: false
+
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+        - shadow
+
+    nakedret:
+      max-func-lines: 0
+
+    nolintlint:
+      allow-no-explanation: [funlen, golines]
+      require-explanation: true
+      require-specific: true
+
+    perfsprint:
+      strconcat: false
+
+    reassign:
+      patterns:
+        - ".*"
+
+    revive:
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: empty-block
+        - name: error-naming
+        - name: error-return
+        - name: error-strings
+        - name: errorf
+        - name: exported
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: range
+        - name: receiver-naming
+        - name: redefines-builtin-id
+        - name: superfluous-else
+        - name: time-naming
+        - name: var-declaration
+        - name: var-naming
+        - name: unreachable-code
+        - name: package-comments
+
+    sloglint:
+      no-global: all
+      context: scope
+
+    staticcheck:
+      checks:
+        - all
+        - -ST1000
+        - -ST1016
+        - -QF1008
+
+    usetesting:
+      os-temp-dir: true
+
+  exclusions:
+    generated: lax
+    warn-unused: true
+    presets:
+      - std-error-handling
+      - common-false-positives
+    rules:
+      - text: 'should have a package comment'
+        linters: [revive]
+      - text: 'exported \S+ \S+ should have comment( \(or a comment on this block\))? or be unexported'
+        linters: [revive]
+      - path: '_test\.go'
+        linters:
+          - bodyclose
+          - cyclop
+          - errcheck
+          - exhaustive
+          - funlen
+          - goconst
+          - gocyclo
+          - gosec
+          - nestif
+          - nilnil
+          - noctx
+          - nonamedreturns
+          - testifylint
+          - tparallel
+          - unparam
+          - gochecknoglobals
+      # CLI binaries legitimately print to stdout/stderr; library code uses slog.
+      - path: '^cmd/'
+        linters:
+          - forbidigo
+          - gochecknoglobals
+          - exhaustive
+          - funlen
+      # `if x, err := f(); err != nil` shadowing is idiomatic Go.
+      - source: 'if err := .*; err != nil'
+        linters: [govet]

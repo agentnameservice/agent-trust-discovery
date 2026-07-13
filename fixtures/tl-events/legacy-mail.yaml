@@ -1,0 +1,22 @@
+# Old, deprecated, no DNSSEC/CAA — a low-integrity legacy actor.
+ansId: agent-002
+status: DEPRECATED
+providerId: legacy-corp
+firstSeen: 2024-06-25T10:00:00Z
+lastUpdated: 2026-05-01T08:00:00Z
+agent:
+  host: mail.legacy.example.net
+  version: v0.9.0
+  name: Legacy Mail Relay
+  description: Email relay agent (deprecated)
+  tags: [email, legacy]
+  capabilities: [send-mail]
+  endpoints:
+    - { protocol: HTTP-API, transport: REST, url: https://mail.legacy.example.net/api }
+attestations:
+  serverCert:   { fingerprint: "SHA256:2020202020202020202020202020202020202020202020202020202020202020" }
+  identityCert: { fingerprint: "SHA256:2121212121212121212121212121212121212121212121212121212121212121" }
+  dnsRecordsProvisioned:
+    _ans: "v=ans1; version=v0.9.0; url=https://mail.legacy.example.net"
+    _ans-badge: "v=ans-badge1; level=bronze"
+  dnssecStatus: unsigned

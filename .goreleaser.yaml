@@ -1,0 +1,113 @@
+# GoReleaser config for the four agent-trust-discovery binaries:
+#   agent-trust-discovery        — read + admin import HTTP API
+#   agent-prober        — optional live DNS/TLS drift-observation producer
+#   agent-hydrator-stub — stub evidence-source hydrator that powers the offline demo
+#   agent-snapshot      — Transparency-Log live-capture step for `make demo-live`
+#
+# All four are pure Go (modernc.org/sqlite is a Go transpilation of upstream
+# SQLite, so the SQLite-backed binaries need no CGO). The release matrix is
+# linux + darwin × amd64 + arm64; library/tooling users on other platforms can
+# `go install ./cmd/...` directly since the code is CGO-free and cross-platform.
+# Docs: https://goreleaser.com/customization/
+version: 2
+
+project_name: agent-trust-discovery
+
+before:
+  hooks:
+    - go mod tidy
+
+# ldflags target `main.version` / `main.commit` / `main.date`. The v1 binaries
+# do not declare these vars yet, so the linker silently ignores the unmatched
+# -X targets (harmless) — they are wired here so version stamping starts
+# working the moment a `main` declares them, with no release-config change.
+builds:
+  - id: agent-trust-discovery
+    main: ./cmd/agent-trust-discovery
+    binary: agent-trust-discovery
+    env: [CGO_ENABLED=0]
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags: [-trimpath]
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.ShortCommit}}
+      - -X main.date={{.Date}}
+
+  - id: agent-prober
+    main: ./cmd/agent-prober
+    binary: agent-prober
+    env: [CGO_ENABLED=0]
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags: [-trimpath]
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.ShortCommit}}
+      - -X main.date={{.Date}}
+
+  - id: agent-hydrator-stub
+    main: ./cmd/agent-hydrator-stub
+    binary: agent-hydrator-stub
+    env: [CGO_ENABLED=0]
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags: [-trimpath]
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.ShortCommit}}
+      - -X main.date={{.Date}}
+
+  - id: agent-snapshot
+    main: ./cmd/agent-snapshot
+    binary: agent-snapshot
+    env: [CGO_ENABLED=0]
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags: [-trimpath]
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.ShortCommit}}
+      - -X main.date={{.Date}}
+
+# One archive per (goos, goarch), each containing all four binaries.
+archives:
+  - id: agent-trust-discovery
+    ids:
+      - agent-trust-discovery
+      - agent-prober
+      - agent-hydrator-stub
+      - agent-snapshot
+    name_template: "agent-trust-discovery_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-snapshot-{{ .ShortCommit }}"
+
+# release-please owns the changelog and the GitHub Release body. GoReleaser
+# only attaches binaries + checksums to the existing release.
+changelog:
+  disable: true
+
+release:
+  mode: append
+  # Matches the module path (github.com/agentnameservice/agent-trust-discovery). Update the
+  # owner/name here if the project is published under a different GitHub org.
+  github:
+    owner: godaddy
+    name: agent-trust-discovery

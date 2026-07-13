@@ -1,0 +1,22 @@
+# Build output / tooling
+/bin/
+
+# Live snapshot output (captured prod data; should never be committed).
+/fixtures/snapshot/
+
+# Coverage artifacts
+coverage.out
+coverage.domain.out
+coverage.html
+
+# SQLite databases (demo + tests write these)
+*.db
+*.db-shm
+*.db-wal
+
+# Local planning / working scaffolding (not part of the published project).
+/tasks/
+
+# Editor / OS noise
+.DS_Store
+*.swp

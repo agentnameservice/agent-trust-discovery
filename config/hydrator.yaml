@@ -1,0 +1,13 @@
+# agent-hydrator-stub config (design §6.3). The Bootstrap-archetype hydrator that
+# powers the default offline demo.
+mode: mock                     # mock | real
+                               # mock → import agents AND emit fixture observations (default)
+                               # real → import agents ONLY; agent-prober (§6.6) supplies live observations
+target:
+  url: http://localhost:8080
+  adminKey: ""                 # blank when agent-trust-discovery has admin.requireKey=false
+source:
+  tlEventsDir:     fixtures/tl-events     # simulated TL events; agent metadata + sealed baselines
+  observationsDir: fixtures/observations  # observed/live values for drift signals + raw observations
+provenance:
+  aimId: did:web:demo-aim.local           # tag every observation this hydrator emits

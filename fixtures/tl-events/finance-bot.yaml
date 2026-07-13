@@ -1,0 +1,23 @@
+# EV cert, mature, no churn, fully signed — the top scorer.
+ansId: agent-007
+status: ACTIVE
+providerId: finance-corp
+firstSeen: 2025-05-21T10:00:00Z
+lastUpdated: 2026-06-20T08:00:00Z
+agent:
+  host: finance.example.com
+  version: v3.1.0
+  name: Finance Bot
+  description: Regulated financial transactions agent
+  tags: [finance, payments]
+  capabilities: [quote, transfer, balance]
+  endpoints:
+    - { protocol: A2A, transport: HTTP, url: https://finance.example.com/a2a }
+    - { protocol: MCP, transport: STREAMABLE-HTTP, url: https://finance.example.com/mcp }
+attestations:
+  serverCert:   { fingerprint: "SHA256:7070707070707070707070707070707070707070707070707070707070707070" }
+  identityCert: { fingerprint: "SHA256:7171717171717171717171717171717171717171717171717171717171717171" }
+  dnsRecordsProvisioned:
+    _ans: "v=ans1; version=v3.1.0; url=https://finance.example.com"
+    _ans-badge: "v=ans-badge1; level=gold"
+  dnssecStatus: signed

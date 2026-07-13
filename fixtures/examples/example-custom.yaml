@@ -1,0 +1,13 @@
+# Worked example for an out-of-tree custom signal (design §8.3), paired with
+# docs/extending-signals.md. This is the observation an `uptime` hydrator would
+# POST. It lives in fixtures/examples/ — NOT fixtures/observations/ — so the
+# hydrator does not load it during `make demo`; the shipped binary does not
+# register `uptime`, so importing it would return 422 UNKNOWN_SIGNAL until you
+# add the signal per docs/extending-signals.md. It is here to show the wire shape
+# and to stay validated against the loader (see internal/hydrator's example-fixture test).
+agentId: agent-001
+observations:
+  - signalId: uptime
+    observedAt: "2026-06-20T08:00:00Z"
+    value:
+      uptime90d: 0.999

@@ -1,0 +1,69 @@
+# Automatically creates release PRs and, when a release-please release lands,
+# builds and uploads the four agent-trust-discovery binaries to that release in the
+# same workflow run.
+#
+# Why these are combined: events triggered by GITHUB_TOKEN (such as
+# release-please publishing a release) do NOT trigger downstream workflows.
+# Splitting goreleaser into its own `release: published` workflow would silently
+# never fire. Running goreleaser as a needs:-gated job in the same workflow
+# avoids this entirely without requiring a PAT.
+# Docs: https://docs.github.com/en/actions/security-guides/automatic-token-authentication
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  # Manual trigger for recovery scenarios (e.g., re-running after a failed release).
+  workflow_dispatch:
+
+# contents:write is required for creating git tags, GitHub Releases, and uploading release assets.
+# pull-requests:write is required for creating and updating release PRs.
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - name: Run Release Please
+        id: release
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  goreleaser:
+    name: Build & upload binaries
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          # Full history + tags so `git describe` resolves the version.
+          fetch-depth: 0
+          ref: ${{ needs.release-please.outputs.tag_name }}
+
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          # Track the Go directive in go.mod — same approach as ci.yml so
+          # bumping go.mod alone updates both CI and release Go versions.
+          go-version-file: go.mod
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@5daf1e915a5f0af01ddbcd89a43b8061ff4f1a89 # v7.2.2
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

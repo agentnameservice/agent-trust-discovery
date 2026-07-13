@@ -1,0 +1,22 @@
+# Revoked, no certificate — should score at the bottom.
+ansId: agent-004
+status: REVOKED
+providerId: unknown
+firstSeen: 2026-03-27T10:00:00Z
+lastUpdated: 2026-06-10T08:00:00Z
+agent:
+  host: bad.actor.example
+  version: v1.2.0
+  name: Revoked Actor
+  description: Revoked registration
+  tags: [revoked]
+  capabilities: []
+  endpoints:
+    - { protocol: HTTP-API, transport: REST, url: https://bad.actor.example/api }
+attestations:
+  serverCert:   { fingerprint: "SHA256:4040404040404040404040404040404040404040404040404040404040404040" }
+  identityCert: { fingerprint: "SHA256:4141414141414141414141414141414141414141414141414141414141414141" }
+  dnsRecordsProvisioned:
+    _ans: "v=ans1; version=v1.2.0; url=https://bad.actor.example"
+    _ans-badge: "v=ans-badge1; level=none"
+  dnssecStatus: unsigned

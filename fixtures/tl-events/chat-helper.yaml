@@ -1,0 +1,21 @@
+ansId: agent-009
+status: WARNING
+providerId: chatco
+firstSeen: 2026-06-05T10:00:00Z
+lastUpdated: 2026-06-22T08:00:00Z
+agent:
+  host: chat.example.com
+  version: v0.5.0
+  name: Chat Helper
+  description: Conversational helper (under review)
+  tags: [chat, assistant]
+  capabilities: [chat, translate]
+  endpoints:
+    - { protocol: A2A, transport: SSE, url: https://chat.example.com/a2a }
+attestations:
+  serverCert:   { fingerprint: "SHA256:9090909090909090909090909090909090909090909090909090909090909090" }
+  identityCert: { fingerprint: "SHA256:9191919191919191919191919191919191919191919191919191919191919191" }
+  dnsRecordsProvisioned:
+    _ans: "v=ans1; version=v0.5.0; url=https://chat.example.com"
+    _ans-badge: "v=ans-badge1; level=bronze"
+  dnssecStatus: signed
