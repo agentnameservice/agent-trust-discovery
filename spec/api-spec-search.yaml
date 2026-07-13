@@ -1,0 +1,393 @@
+openapi: 3.1.0
+info:
+  title: ANS Search / Trust Index Reference Implementation
+  version: 0.1.0
+  description: >
+    Canonical wire contract for the `agent-trust-discovery` reference implementation
+    (design §5). Read endpoints mirror
+    the production search API envelope + pagination; the agent-detail response
+    embeds a spec-conformant Trust Evaluation payload (Trust Index spec
+    Appendix B) plus an RI-specific per-signal breakdown for pedagogy. Admin
+    import routes are the only ingress for state.
+
+    NOTE (design §5.5 reconciliation, decision #3): the collection envelope and
+    pagination are byte-compatible with `ans-search-api`; the agent *item* field
+    names, the full 5-value status enum, and the RFC 7807 error format are the
+    RI's spec-aligned shapes and intentionally differ from that service.
+
+servers:
+  - url: http://localhost:8080
+    description: Local / demo
+
+tags:
+  - name: read
+    description: Public read endpoints (no auth in v1).
+  - name: admin
+    description: Operator-only import endpoints (Bearer admin key).
+  - name: meta
+
+paths:
+  /health:
+    get:
+      tags: [meta]
+      summary: Liveness probe (never authed).
+      security: []
+      responses:
+        "200":
+          description: Service is live.
+          content:
+            text/plain:
+              schema: { type: string, example: ok }
+
+  /v1/ans/registered-agents:
+    get:
+      tags: [read]
+      summary: Search registered agents via query parameters.
+      description: >
+        When both `pageToken` and `page` are supplied, `pageToken` takes
+        precedence and `page` is ignored. `pageToken` / `pageTokenDirection`
+        are cursor pagination and are GET-only; the POST body variant omits
+        them.
+      security: []
+      parameters:
+        - { name: query, in: query, schema: { type: string } }
+        - { name: pageSize, in: query, schema: { type: integer, default: 20, minimum: 1, maximum: 100 } }
+        - { name: page, in: query, schema: { type: integer, default: 1, minimum: 1 } }
+        - { name: pageToken, in: query, schema: { type: string } }
+        - { name: pageTokenDirection, in: query, schema: { type: string, enum: [forward, backward] } }
+        - { name: totalRequired, in: query, schema: { type: boolean, default: false } }
+        - { name: profile, in: query, schema: { type: string, default: default } }
+        - { name: language, in: query, schema: { type: string } }
+        - { name: providerIds, in: query, schema: { type: array, items: { type: string } } }
+        - { name: statuses, in: query, schema: { type: array, items: { $ref: "#/components/schemas/Status" } } }
+        - { name: agentDomains, in: query, schema: { type: array, items: { type: string } } }
+        - { name: protocols, in: query, schema: { type: array, items: { type: string } } }
+        - { name: transports, in: query, schema: { type: array, items: { type: string } } }
+        - { name: tags, in: query, schema: { type: array, items: { type: string } } }
+        - { name: capabilities, in: query, schema: { type: array, items: { type: string } } }
+      responses:
+        "200":
+          description: Search results.
+          headers:
+            X-Request-Id: { $ref: "#/components/headers/RequestId" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SearchResults" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+        "500": { $ref: "#/components/responses/Problem" }
+
+  /v1/ans/search-registered-agents:
+    post:
+      tags: [read]
+      summary: Search registered agents via JSON body.
+      description: >
+        Same filters as the GET route plus page-number pagination. Cursor
+        pagination (`pageToken` / `pageTokenDirection`) is GET-only and is
+        intentionally omitted from `SearchRequest`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SearchRequest" }
+      responses:
+        "200":
+          description: Search results.
+          headers:
+            X-Request-Id: { $ref: "#/components/headers/RequestId" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SearchResults" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+        "500": { $ref: "#/components/responses/Problem" }
+
+  /v1/ans/registered-agents/{agentId}:
+    get:
+      tags: [read]
+      summary: Agent detail, including the embedded Trust Evaluation.
+      security: []
+      parameters:
+        - { name: agentId, in: path, required: true, schema: { type: string } }
+        - { name: profile, in: query, schema: { type: string, default: default } }
+      responses:
+        "200":
+          description: Agent detail.
+          headers:
+            X-Request-Id: { $ref: "#/components/headers/RequestId" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AgentDetail" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+        "500": { $ref: "#/components/responses/Problem" }
+
+  /v1/internal/agents/import:
+    post:
+      tags: [admin]
+      summary: Bulk-import (upsert) agents. Upsert keyed on agentId.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ImportAgentsRequest" }
+      responses:
+        "200":
+          description: Batch accepted.
+          headers:
+            X-Request-Id: { $ref: "#/components/headers/RequestId" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+        "500": { $ref: "#/components/responses/Problem" }
+
+  /v1/internal/observations/import:
+    post:
+      tags: [admin]
+      summary: Bulk-import signal observations (append-only; latest per (agent,signal) scored).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ImportObservationsRequest" }
+      responses:
+        "200":
+          description: Batch accepted.
+          headers:
+            X-Request-Id: { $ref: "#/components/headers/RequestId" }
+        "400": { $ref: "#/components/responses/Problem" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+        "500": { $ref: "#/components/responses/Problem" }
+
+components:
+  securitySchemes:
+    adminKey:
+      type: http
+      scheme: bearer
+      description: Static admin key from runtime.yaml (admin.key) when admin.requireKey is true (§5.3).
+
+  headers:
+    RequestId:
+      description: >
+        Correlates a response to its inbound request. Server echoes the caller-
+        supplied `X-Request-Id` if present, else mints one (16-byte hex). The
+        same value appears on every log line for the request (design §5.6).
+      schema: { type: string }
+
+  responses:
+    Problem:
+      description: RFC 7807 problem details.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ProblemDetails" }
+
+  schemas:
+    Status:
+      type: string
+      description: Lifecycle status. All five are valid on the wire (design §3.1 #7).
+      enum: [ACTIVE, WARNING, DEPRECATED, EXPIRED, REVOKED]
+
+    Dimension:
+      type: string
+      description: >
+        Trust Vector dimension. Lower-case values are intentional and match
+        the Trust Index spec (§2/§3); the CONSTANT_CASE `Status` /
+        `recommendedProfile` / error `code` enums are the RFC 7807 /
+        RegisteredAgent naming convention.
+      enum: [integrity, identity, solvency, behavior, safety]
+
+    RegisteredAgent:
+      type: object
+      required: [agentId, dnsName, displayName, status, firstSeen, lastUpdated]
+      properties:
+        agentId: { type: string }
+        dnsName:
+          type: string
+          description: >
+            ANS URI (scheme `ans://`) identifying the agent. Named `dnsName`
+            for parity with the sibling `ans-search-api` envelope even though
+            the value is an ANS URI, not a bare DNS name.
+          example: "ans://v1.0.0.booking.example.com"
+        displayName: { type: string }
+        description: { type: string }
+        providerId: { type: string }
+        status: { $ref: "#/components/schemas/Status" }
+        protocols: { type: array, items: { type: string } }
+        transports: { type: array, items: { type: string } }
+        tags: { type: array, items: { type: string } }
+        capabilities: { type: array, items: { type: string } }
+        firstSeen: { type: string, format: date-time }
+        lastUpdated: { type: string, format: date-time }
+
+    AgentDetail:
+      allOf:
+        - $ref: "#/components/schemas/RegisteredAgent"
+        - type: object
+          properties:
+            trustEvaluation: { $ref: "#/components/schemas/TrustEvaluation" }
+
+    SearchResults:
+      type: object
+      required: [items, links]
+      description: Envelope byte-compatible with ans-search-api.
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/RegisteredAgent" }
+        links:
+          type: array
+          items: { $ref: "#/components/schemas/Link" }
+        totalItems: { type: integer, description: Present only when totalRequired=true. }
+        totalPages: { type: integer, description: Present only when totalRequired=true. }
+
+    Link:
+      type: object
+      required: [rel, method, href]
+      properties:
+        rel: { type: string, enum: [self, prev, next] }
+        method: { type: string, example: GET }
+        href: { type: string }
+
+    SearchRequest:
+      type: object
+      properties:
+        query: { type: string }
+        pageSize: { type: integer, default: 20, minimum: 1, maximum: 100 }
+        page: { type: integer, default: 1, minimum: 1 }
+        totalRequired: { type: boolean }
+        providerIds: { type: array, items: { type: string } }
+        statuses: { type: array, items: { $ref: "#/components/schemas/Status" } }
+        agentDomains: { type: array, items: { type: string } }
+        protocols: { type: array, items: { type: string } }
+        transports: { type: array, items: { type: string } }
+        tags: { type: array, items: { type: string } }
+        capabilities: { type: array, items: { type: string } }
+
+    TrustEvaluation:
+      type: object
+      description: Trust Index spec Appendix B payload + RI-specific dimensions[] breakdown.
+      required: [agentId, evaluationTime, trustVector, recommendedProfile, riskFactors, scoringProfile, dimensions]
+      properties:
+        agentId: { type: string }
+        evaluationTime: { type: string, format: date-time }
+        trustVector: { $ref: "#/components/schemas/TrustVector" }
+        recommendedProfile:
+          type: string
+          enum: [READ_ONLY, TRANSACTIONAL, FIDUCIARY, UNTRUSTED]
+        verificationTier:
+          type: [string, "null"]
+          enum: [BRONZE, SILVER, GOLD, null]
+          description: null in v1 (DNSSEC/DANE/TL not assessed; spec §7.2 OPTIONAL).
+        riskFactors: { type: array, items: { type: string } }
+        scoringProfile: { type: string }
+        dimensions:
+          type: array
+          items: { $ref: "#/components/schemas/DimensionScore" }
+
+    TrustVector:
+      type: object
+      required: [integrity, identity, solvency, behavior, safety]
+      properties:
+        integrity: { type: integer, minimum: 0, maximum: 100 }
+        identity:  { type: integer, minimum: 0, maximum: 100 }
+        solvency:  { type: integer, minimum: 0, maximum: 100 }
+        behavior:  { type: integer, minimum: 0, maximum: 100 }
+        safety:    { type: integer, minimum: 0, maximum: 100 }
+
+    DimensionScore:
+      type: object
+      required: [dimension, score, signalScores]
+      properties:
+        dimension: { $ref: "#/components/schemas/Dimension" }
+        score: { type: integer, minimum: 0, maximum: 100 }
+        signalScores:
+          type: array
+          items: { $ref: "#/components/schemas/SignalScore" }
+
+    SignalScore:
+      type: object
+      required: [signalId, rawScore, weight, attestation, explanation]
+      properties:
+        signalId: { type: string }
+        rawScore: { type: integer, minimum: 0, maximum: 100 }
+        weight: { type: number }
+        attestation:
+          type: string
+          description: >
+            Lower-case values are intentional and follow the Trust Index spec
+            §3 attestation vocabulary; see the note on `Dimension`.
+          enum: [unattested, tl_attested, card_attested]
+        explanation: { type: string }
+
+    ImportAgentsRequest:
+      type: object
+      required: [agents]
+      properties:
+        agents:
+          type: array
+          items: { $ref: "#/components/schemas/RegisteredAgent" }
+
+    ImportObservationsRequest:
+      type: object
+      required: [observations]
+      properties:
+        observations:
+          type: array
+          items: { $ref: "#/components/schemas/Observation" }
+
+    Observation:
+      type: object
+      required: [agentId, signalId, observedAt, value]
+      properties:
+        agentId: { type: string }
+        signalId: { type: string }
+        observedAt: { type: string, format: date-time }
+        value:
+          description: Opaque per-signal payload; validated by the signal's Validate (§5.2.1).
+          type: object
+          additionalProperties: true
+        provenance: { $ref: "#/components/schemas/Provenance" }
+
+    Provenance:
+      type: object
+      properties:
+        aimId: { type: string, example: "did:web:demo-aim.local" }
+        evidenceUrl: { type: string, format: uri }
+
+    ProblemDetails:
+      type: object
+      description: RFC 7807, matching the sibling `ans` repo (design §5.4).
+      required: [type, title, status]
+      properties:
+        type: { type: string, default: "about:blank" }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        code:
+          type: string
+          description: >
+            Programmatic code clients switch on. 400 is reserved for syntactic
+            failures (malformed JSON, non-integer / non-boolean where required);
+            422 for semantic ones (enum mismatch, per-filter cap, references to
+            resources that don't exist). Design §5.2 lists the full split.
+          enum:
+            - AGENT_NOT_FOUND         # 404 — detail for an unknown agentId
+            - INVALID_REQUEST         # 400 — malformed JSON / bad RFC 3339 / non-int / non-bool
+            - INVALID_VALUE           # 422 — well-formed input failed enum / cap / range validation
+            - UNAUTHORIZED            # 401 — admin routes: missing or invalid bearer key
+            - UNKNOWN_PROFILE         # 422 — ?profile names a profile this binary did not load
+            - UNKNOWN_SIGNAL          # 422 — observation.signalId not registered in this binary
+            - INVALID_SIGNAL          # 422 — signalId is a derived signal (e.g. agentage)
+            - INVALID_SIGNAL_VALUE    # 422 — value payload fails the signal's Validate
+          x-error-code:
+            format: CONSTANT_CASE
+            stability: >
+              Codes are contract; renames are a breaking change and require a
+              spec version bump. Additions are non-breaking; clients MUST
+              default an unknown code to a generic error handler.
+
+security:
+  - adminKey: []

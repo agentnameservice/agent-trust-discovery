@@ -1,0 +1,21 @@
+ansId: agent-010
+status: EXPIRED
+providerId: databroker
+firstSeen: 2025-12-07T10:00:00Z
+lastUpdated: 2026-04-01T08:00:00Z
+agent:
+  host: data.broker.example
+  version: v1.0.0
+  name: Data Broker
+  description: Data aggregation agent (registration expired)
+  tags: [data]
+  capabilities: [aggregate]
+  endpoints:
+    - { protocol: HTTP-API, transport: REST, url: https://data.broker.example/api }
+attestations:
+  serverCert:   { fingerprint: "SHA256:a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0" }
+  identityCert: { fingerprint: "SHA256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1" }
+  dnsRecordsProvisioned:
+    _ans: "v=ans1; version=v1.0.0; url=https://data.broker.example"
+    _ans-badge: "v=ans-badge1; level=none"
+  dnssecStatus: unsigned

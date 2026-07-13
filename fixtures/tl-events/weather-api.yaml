@@ -1,0 +1,21 @@
+ansId: agent-008
+status: ACTIVE
+providerId: weather-co
+firstSeen: 2026-04-26T10:00:00Z
+lastUpdated: 2026-06-17T08:00:00Z
+agent:
+  host: weather.example.com
+  version: v1.4.0
+  name: Weather API
+  description: Weather forecast agent
+  tags: [weather, data]
+  capabilities: [forecast, current-conditions]
+  endpoints:
+    - { protocol: HTTP-API, transport: REST, url: https://weather.example.com/api }
+attestations:
+  serverCert:   { fingerprint: "SHA256:8080808080808080808080808080808080808080808080808080808080808080" }
+  identityCert: { fingerprint: "SHA256:8181818181818181818181818181818181818181818181818181818181818181" }
+  dnsRecordsProvisioned:
+    _ans: "v=ans1; version=v1.4.0; url=https://weather.example.com"
+    _ans-badge: "v=ans-badge1; level=silver"
+  dnssecStatus: signed

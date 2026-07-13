@@ -1,0 +1,26 @@
+# Booking (agent-001) live-side observations. The §8.1 walkthrough edits this
+# file: stop 5 flips one hex digit of certfingerprint.server's `observed`;
+# stop 6 swaps the host in dnsrecord.ans's `observed`.
+agentId: agent-001
+observations:
+  - signalId: certtype
+    observedAt: "2026-06-20T08:00:00Z"
+    value: { type: DV }
+  - signalId: dnssecurity
+    observedAt: "2026-06-20T08:00:00Z"
+    value: { dnssec: true, caa: true }
+  - signalId: versionstability
+    observedAt: "2026-06-20T08:00:00Z"
+    value: { versionChanges30d: 2 }
+  - signalId: certfingerprint.server
+    observedAt: "2026-06-20T08:00:00Z"
+    observed: "SHA256:1010101010101010101010101010101010101010101010101010101010101010"
+  - signalId: certfingerprint.identity
+    observedAt: "2026-06-20T08:00:00Z"
+    observed: "SHA256:1111111111111111111111111111111111111111111111111111111111111111"
+  - signalId: dnsrecord.ans
+    observedAt: "2026-06-20T08:00:00Z"
+    observed: "v=ans1; version=v1.0.0; url=https://booking.example.com"
+  - signalId: dnsrecord.ans-badge
+    observedAt: "2026-06-20T08:00:00Z"
+    observed: "v=ans-badge1; level=gold"

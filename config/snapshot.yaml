@@ -1,0 +1,15 @@
+# agent-snapshot defaults (plan §3). The Search API and Transparency Log are
+# public GoDaddy GET endpoints (no auth). CLI flags override every field here.
+#
+# Day-to-day use:
+#   agent-snapshot --query=weather --limit=5
+searchUrl: https://api.godaddy.com
+tlUrl:     https://transparency.ans.godaddy.com
+out:       fixtures/snapshot
+
+# Default search; override with --query, --provider, --protocol, ... on the
+# CLI. The limit is intentionally small so a snapshot run stays well inside
+# the 100 req/60s public rate limit.
+search:
+  pageSize: 20
+  limit:    5

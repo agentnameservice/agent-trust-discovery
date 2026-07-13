@@ -1,0 +1,23 @@
+# Worked example (design §5.1): DV cert → identity 40, strong integrity.
+ansId: agent-001
+status: ACTIVE
+providerId: godaddy
+firstSeen: 2026-01-13T10:00:00Z
+lastUpdated: 2026-06-20T08:00:00Z
+agent:
+  host: booking.example.com
+  version: v1.0.0
+  name: Booking Concierge
+  description: Hotel and flight booking agent
+  tags: [travel, booking]
+  capabilities: [search-hotels, book-hotel, search-flights]
+  endpoints:
+    - { protocol: A2A, transport: HTTP, url: https://booking.example.com/a2a }
+    - { protocol: MCP, transport: HTTP, url: https://booking.example.com/mcp }
+attestations:
+  serverCert:   { fingerprint: "SHA256:1010101010101010101010101010101010101010101010101010101010101010" }
+  identityCert: { fingerprint: "SHA256:1111111111111111111111111111111111111111111111111111111111111111" }
+  dnsRecordsProvisioned:
+    _ans: "v=ans1; version=v1.0.0; url=https://booking.example.com"
+    _ans-badge: "v=ans-badge1; level=gold"
+  dnssecStatus: signed

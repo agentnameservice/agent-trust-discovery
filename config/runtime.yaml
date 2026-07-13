@@ -1,0 +1,28 @@
+# agent-trust-discovery runtime config (design §5.3, §4.6, §5.6).
+# This is the shipped default that forks copy — secure by default.
+
+listen:
+  addr: ":8080"
+
+db:
+  path: "agent-trust-discovery.db"
+
+# Admin import routes (/v1/internal/*). Secure-by-default: requireKey is true,
+# so a Bearer key is mandatory. Boot fails fast if requireKey is true and key
+# is empty. Set requireKey false only behind a trusted reverse proxy / for demos
+# (the binary then logs a loud per-request warning).
+admin:
+  requireKey: true
+  key: ""
+
+log:
+  level: info # debug | info | warn | error
+
+# recommendedProfile classification thresholds (§4.6). Illustrative defaults;
+# the Trust Index spec leaves these to provider choice. The cascade is total
+# (READ_ONLY is the explicit fallback).
+classify:
+  untrustedThreshold: 20
+  transactionalThreshold: 50
+  fiduciaryThreshold: 80
+  identityFiduciaryThreshold: 90

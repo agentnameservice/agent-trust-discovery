@@ -1,0 +1,13 @@
+# agent-prober config (design §6.6). Optional real-signal AIM-archetype producer:
+# keeps `expected` from the (simulated) TL record, produces `observed` from real
+# DNS queries and TLS handshakes. Not exercised by `make demo`.
+target:
+  url: http://localhost:8080
+  adminKey: ""                 # same admin-key contract as the hydrator (§5.3)
+source:
+  tlEventsDir: fixtures/tl-events    # SAME directory the hydrator imports from
+probe:
+  cadence: 0                   # 0 → single pass then exit (demo); >0 → loop every N seconds
+  timeout: 5s                  # per-probe network timeout
+provenance:
+  aimId: did:web:demo-prober.local

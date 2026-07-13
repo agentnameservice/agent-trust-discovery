@@ -1,0 +1,12 @@
+# agent-hydrator-stub config for the live snapshot demo (plan §4). Reads the
+# captured fixtures from agent-snapshot instead of curated mock fixtures. real
+# mode → imports agents only; agent-prober supplies live observations.
+mode: real
+target:
+  url: http://localhost:8080
+  adminKey: ""
+source:
+  tlEventsDir:     fixtures/snapshot/tl-events  # written by agent-snapshot
+  observationsDir: fixtures/observations         # unused in real mode
+provenance:
+  aimId: did:web:live-demo-aim.local

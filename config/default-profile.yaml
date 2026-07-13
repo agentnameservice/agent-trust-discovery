@@ -1,0 +1,24 @@
+# Default scoring profile (design §4.5). signalWeights configure how signals
+# roll up within a dimension; dimensionWeights are an on/off gate selecting
+# which dimensions drive the recommendedProfile cascade (§4.6 active-dimension
+# rule). In v1 a dimensionWeight is 0 or 1 only — magnitude is inert (no
+# cross-dimension aggregate; compositeScore is declined, §5.5). Distinct from a
+# recommendedProfile (the spec output classification, §4.6).
+name: default
+dimensionWeights:
+  integrity: 1.0   # active — drives the recommendedProfile cascade
+  identity:  1.0   # active — drives the recommendedProfile cascade
+  solvency:  0.0   # empty in v1; no signals registered
+  behavior:  0.0   # empty in v1; no signals registered
+  safety:    0.0   # empty in v1; no signals registered
+signalWeights:
+  # raw-observation signals
+  certtype:                 1.0   # identity
+  dnssecurity:              1.0   # integrity
+  agentage:                 1.0   # integrity (derived)
+  versionstability:         1.0   # integrity
+  # drift-verdict signals — active by default so the §8.1 drift demos fire
+  certfingerprint.server:   1.0   # integrity
+  certfingerprint.identity: 1.0   # integrity
+  dnsrecord.ans:            1.0   # integrity
+  dnsrecord.ans-badge:      1.0   # integrity

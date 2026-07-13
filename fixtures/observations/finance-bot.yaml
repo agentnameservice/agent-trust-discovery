@@ -1,0 +1,23 @@
+agentId: agent-007
+observations:
+  - signalId: certtype
+    observedAt: "2026-06-20T08:00:00Z"
+    value: { type: EV }
+  - signalId: dnssecurity
+    observedAt: "2026-06-20T08:00:00Z"
+    value: { dnssec: true, caa: true }
+  - signalId: versionstability
+    observedAt: "2026-06-20T08:00:00Z"
+    value: { versionChanges30d: 0 }
+  - signalId: certfingerprint.server
+    observedAt: "2026-06-20T08:00:00Z"
+    observed: "SHA256:7070707070707070707070707070707070707070707070707070707070707070"
+  - signalId: certfingerprint.identity
+    observedAt: "2026-06-20T08:00:00Z"
+    observed: "SHA256:7171717171717171717171717171717171717171717171717171717171717171"
+  - signalId: dnsrecord.ans
+    observedAt: "2026-06-20T08:00:00Z"
+    observed: "v=ans1; version=v3.1.0; url=https://finance.example.com"
+  - signalId: dnsrecord.ans-badge
+    observedAt: "2026-06-20T08:00:00Z"
+    observed: "v=ans-badge1; level=gold"

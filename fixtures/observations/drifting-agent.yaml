@@ -1,0 +1,26 @@
+# Pre-rigged: the live _ans record points at malicious-site.com, NOT the sealed
+# drift.example.com baseline → the hydrator emits matched=false and the engine
+# raises INTEGRITY_DNS_ANS_DRIFT (design §8.1 stop 6) with no manual edit needed.
+agentId: agent-006
+observations:
+  - signalId: certtype
+    observedAt: "2026-06-20T08:00:00Z"
+    value: { type: EV }
+  - signalId: dnssecurity
+    observedAt: "2026-06-20T08:00:00Z"
+    value: { dnssec: true, caa: true }
+  - signalId: versionstability
+    observedAt: "2026-06-20T08:00:00Z"
+    value: { versionChanges30d: 0 }
+  - signalId: certfingerprint.server
+    observedAt: "2026-06-20T08:00:00Z"
+    observed: "SHA256:6060606060606060606060606060606060606060606060606060606060606060"
+  - signalId: certfingerprint.identity
+    observedAt: "2026-06-20T08:00:00Z"
+    observed: "SHA256:6161616161616161616161616161616161616161616161616161616161616161"
+  - signalId: dnsrecord.ans
+    observedAt: "2026-06-20T08:00:00Z"
+    observed: "v=ans1; version=v1.0.0; url=https://malicious-site.com"
+  - signalId: dnsrecord.ans-badge
+    observedAt: "2026-06-20T08:00:00Z"
+    observed: "v=ans-badge1; level=gold"

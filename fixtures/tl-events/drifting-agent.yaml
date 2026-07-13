@@ -1,0 +1,24 @@
+# EV cert, fully sealed — but its live _ans record is pre-rigged to MISMATCH
+# (see fixtures/observations/drifting-agent.yaml) so the §8.1 stop-6 DNS drift
+# demo fires even if the operator skips the manual fixture edit.
+ansId: agent-006
+status: ACTIVE
+providerId: drift-co
+firstSeen: 2026-01-26T10:00:00Z
+lastUpdated: 2026-06-19T08:00:00Z
+agent:
+  host: drift.example.com
+  version: v1.0.0
+  name: Drifting Agent
+  description: Agent whose live DNS has drifted from its sealed baseline
+  tags: [demo, drift]
+  capabilities: [chat]
+  endpoints:
+    - { protocol: A2A, transport: HTTP, url: https://drift.example.com/a2a }
+attestations:
+  serverCert:   { fingerprint: "SHA256:6060606060606060606060606060606060606060606060606060606060606060" }
+  identityCert: { fingerprint: "SHA256:6161616161616161616161616161616161616161616161616161616161616161" }
+  dnsRecordsProvisioned:
+    _ans: "v=ans1; version=v1.0.0; url=https://drift.example.com"
+    _ans-badge: "v=ans-badge1; level=gold"
+  dnssecStatus: signed

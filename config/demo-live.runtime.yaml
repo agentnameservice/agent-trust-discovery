@@ -1,0 +1,21 @@
+# Demo overlay used by `make demo-live` (plan §4). Same shape as
+# config/demo.runtime.yaml but with a dedicated DB path so the live and mock
+# demos never collide.
+
+listen:
+  addr: ":8080"
+
+db:
+  path: "/tmp/agent-trust-discovery-live-demo.db"
+
+admin:
+  requireKey: false # demo only; emits a loud boot + per-request warning
+
+log:
+  level: info
+
+classify:
+  untrustedThreshold: 20
+  transactionalThreshold: 50
+  fiduciaryThreshold: 80
+  identityFiduciaryThreshold: 90

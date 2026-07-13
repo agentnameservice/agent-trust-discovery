@@ -1,0 +1,39 @@
+{
+  "payload": {
+    "logId": "019d1c2f-6035-7786-9709-1146f6503881",
+    "producer": {
+      "event": {
+        "ansId": "a11c5ca5-0000-0000-0000-000000000001",
+        "ansName": "ans://v1.0.0.ans-agent.godaddy.com",
+        "eventType": "AGENT_REGISTERED",
+        "agent": {
+          "host": "ans-agent.godaddy.com",
+          "name": "GoDaddy ANS Agent",
+          "version": "v1.0.0"
+        },
+        "attestations": {
+          "serverCert": {
+            "fingerprint": "SHA256:c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0",
+            "type": "X509-DV-SERVER"
+          },
+          "identityCert": {
+            "fingerprint": "SHA256:1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d",
+            "type": "X509-OV-CLIENT"
+          },
+          "dnsRecordsProvisioned": {
+            "_ans.ans-agent.godaddy.com": "v=ans1; version=v1.0.0; url=https://ans-agent.godaddy.com",
+            "_ans-badge.ans-agent.godaddy.com": "v=ans-badge1; level=gold"
+          },
+          "domainValidation": "ACME-DNS-01"
+        },
+        "issuedAt": "2026-03-23T19:20:59.356812Z",
+        "timestamp": "2026-03-23T19:32:40.047508Z",
+        "expiresAt": "2027-06-15T12:00:00Z"
+      },
+      "keyId": "ra-stub-key",
+      "signature": "STUB.SIGNATURE.VALUE"
+    }
+  },
+  "schemaVersion": "V1",
+  "status": "ACTIVE"
+}

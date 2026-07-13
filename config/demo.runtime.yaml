@@ -1,0 +1,22 @@
+# Demo overlay used by `make demo` (design §5.3, §8). Unauthenticated admin
+# routes for a frictionless, curl-paste-able walkthrough. Do NOT use this for
+# any network-exposed deployment — the shipped config/runtime.yaml is the
+# secure default.
+
+listen:
+  addr: ":8080"
+
+db:
+  path: "/tmp/agent-trust-discovery-demo.db"
+
+admin:
+  requireKey: false # demo only; emits a loud boot + per-request warning
+
+log:
+  level: info
+
+classify:
+  untrustedThreshold: 20
+  transactionalThreshold: 50
+  fiduciaryThreshold: 80
+  identityFiduciaryThreshold: 90

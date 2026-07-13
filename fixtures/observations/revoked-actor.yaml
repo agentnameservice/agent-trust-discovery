@@ -1,0 +1,23 @@
+agentId: agent-004
+observations:
+  - signalId: certtype
+    observedAt: "2026-06-20T08:00:00Z"
+    value: { type: none }
+  - signalId: dnssecurity
+    observedAt: "2026-06-20T08:00:00Z"
+    value: { dnssec: false, caa: false }
+  - signalId: versionstability
+    observedAt: "2026-06-20T08:00:00Z"
+    value: { versionChanges30d: 2 }
+  - signalId: certfingerprint.server
+    observedAt: "2026-06-20T08:00:00Z"
+    observed: "SHA256:4040404040404040404040404040404040404040404040404040404040404040"
+  - signalId: certfingerprint.identity
+    observedAt: "2026-06-20T08:00:00Z"
+    observed: "SHA256:4141414141414141414141414141414141414141414141414141414141414141"
+  - signalId: dnsrecord.ans
+    observedAt: "2026-06-20T08:00:00Z"
+    observed: "v=ans1; version=v1.2.0; url=https://bad.actor.example"
+  - signalId: dnsrecord.ans-badge
+    observedAt: "2026-06-20T08:00:00Z"
+    observed: "v=ans-badge1; level=none"

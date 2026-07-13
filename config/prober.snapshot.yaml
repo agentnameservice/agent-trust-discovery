@@ -1,0 +1,13 @@
+# agent-prober config for the live snapshot demo (plan §4). The prober binary
+# and code are unchanged — only the tlEventsDir points at the captured
+# snapshot. Live DNS/TLS probes are emitted against the real hosts captured.
+target:
+  url: http://localhost:8080
+  adminKey: ""
+source:
+  tlEventsDir: fixtures/snapshot/tl-events
+probe:
+  cadence: 0
+  timeout: 10s    # public hosts may sit further away than the loopback mock
+provenance:
+  aimId: did:web:live-demo-prober.local
