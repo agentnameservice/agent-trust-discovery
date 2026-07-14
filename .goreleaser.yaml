@@ -106,8 +106,7 @@ changelog:
 
 release:
   mode: append
-  # Matches the module path (github.com/agentnameservice/agent-trust-discovery). Update the
-  # owner/name here if the project is published under a different GitHub org.
-  github:
-    owner: godaddy
-    name: agent-trust-discovery
+  # owner/name are intentionally omitted: GoReleaser infers them from the CI
+  # environment / git remote, so releases keep working across org renames and
+  # transfers. Hardcoding `github.owner` is what broke the v0.1.1 release
+  # (assets were POSTed to a repo that doesn't exist).
