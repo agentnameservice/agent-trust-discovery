@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/agentnameservice/agent-trust-discovery/compare/v0.1.1...v0.1.2) (2026-07-14)
+
+
+### Bug Fixes
+
+* **release:** let GoReleaser infer the GitHub owner/name ([#4](https://github.com/agentnameservice/agent-trust-discovery/issues/4)) ([c278968](https://github.com/agentnameservice/agent-trust-discovery/commit/c27896890bba0a4cedb939b07e29d90fb4820367))
+
 ## [0.1.1](https://github.com/agentnameservice/agent-trust-discovery/compare/v0.1.0...v0.1.1) (2026-07-13)
 
 
