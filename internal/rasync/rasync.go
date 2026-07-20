@@ -99,7 +99,7 @@ func Run(ctx context.Context, feed FeedFetcher, tl TLFetcher, cfg Config, logger
 
 // toEvent merges a folded feed agent with its TL badge into the fixture Event.
 // When tlOK the badge is authoritative for firstSeen + attestations + host/
-// version/name; the feed supplies description + endpoints. When !tlOK the fold
+// version; the feed supplies name + description + endpoints. When !tlOK the fold
 // supplies everything and attestations are empty (prober emits non-matching
 // drift, exactly as for any agent without a captured baseline).
 func toEvent(fa foldedAgent, badge tlevent.Event, tlOK bool) tlevent.Event {
