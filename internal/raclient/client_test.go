@@ -2,8 +2,11 @@ package raclient
 
 import (
 	"context"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -64,5 +67,66 @@ func TestFetchEvents_OmitsCursorWhenEmpty(t *testing.T) {
 	}
 	if gotQuery != "limit=100" {
 		t.Errorf("query = %q, want limit=100 (no lastLogId)", gotQuery)
+	}
+}
+
+// TestNew_NilClientFallsBackToDefault covers New's nil-httpClient guard: the
+// returned Client must use http.DefaultClient and still perform a real fetch.
+func TestNew_NilClientFallsBackToDefault(t *testing.T) {
+	c := New(nil)
+	if c.httpClient != http.DefaultClient {
+		t.Fatalf("New(nil).httpClient = %v, want http.DefaultClient", c.httpClient)
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"items":[],"lastLogId":""}`)
+	}))
+	defer srv.Close()
+	if _, err := c.FetchEvents(context.Background(), srv.URL, "", 10); err != nil {
+		t.Fatalf("FetchEvents with default client: %v", err)
+	}
+}
+
+// TestFetchEvents_ServerBodyErrors covers the two 200-response failure branches:
+// a body over the size cap must surface ErrResponseTooLarge, and a malformed
+// JSON body must surface a (non-sentinel) decode error.
+func TestFetchEvents_ServerBodyErrors(t *testing.T) {
+	tests := []struct {
+		name   string
+		body   string
+		wantIs error // sentinel to match with errors.Is; nil means "any error"
+	}{
+		{
+			name:   "oversized body exceeds cap",
+			body:   strings.Repeat("a", maxResponseBodyBytes+1),
+			wantIs: ErrResponseTooLarge,
+		},
+		{
+			name: "malformed json body",
+			body: "{",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = io.WriteString(w, tt.body)
+			}))
+			defer srv.Close()
+
+			_, err := New(srv.Client()).FetchEvents(context.Background(), srv.URL, "", 100)
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+			if tt.wantIs != nil && !errors.Is(err, tt.wantIs) {
+				t.Fatalf("error = %v, want errors.Is %v", err, tt.wantIs)
+			}
+		})
+	}
+}
+
+// TestFetchEvents_BadBaseURLIsError covers buildURL's parse-error branch: a
+// malformed baseURL must fail before any request is issued.
+func TestFetchEvents_BadBaseURLIsError(t *testing.T) {
+	if _, err := New(nil).FetchEvents(context.Background(), "://bad", "", 10); err == nil {
+		t.Fatal("expected error on bad base URL, got nil")
 	}
 }
