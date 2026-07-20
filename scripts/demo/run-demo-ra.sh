@@ -9,7 +9,7 @@ set -euo pipefail
 
 PORT="${PORT:-8080}"
 BIN="${BIN:-./bin}"
-DB=/tmp/agent-trust-discovery-ra-demo.db
+DB=/tmp/agent-trust-discovery-live-demo.db
 SERVER_LOG=/tmp/agent-trust-discovery-ra-demo.log
 OUT="${OUT:-fixtures/ra-sync}"
 RA_URL="${RA_URL:-http://localhost:18080}"
