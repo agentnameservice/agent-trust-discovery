@@ -1,5 +1,5 @@
 .PHONY: build test test-cover test-race lint vet fmt check tidy clean \
-        cover-domain demo demo-live
+        cover-domain demo demo-live demo-ra
 
 GOBIN   = ./bin
 GOFLAGS = -trimpath
@@ -41,6 +41,17 @@ demo-live:
 	@go build $(GOFLAGS) -o $(GOBIN)/agent-hydrator-stub ./cmd/agent-hydrator-stub
 	@go build $(GOFLAGS) -o $(GOBIN)/agent-prober ./cmd/agent-prober
 	@bash scripts/demo/run-demo-live.sh
+
+# ra-sync demo: capture from a (private) ANS RA event feed via agent-ra-sync,
+# then run the unchanged hydrator/prober pipeline. Requires a reachable RA + TL
+# (RA_URL / TL_URL). Not part of `make check`.
+demo-ra:
+	@echo "Building ra-sync demo binaries into $(GOBIN)..."
+	@go build $(GOFLAGS) -o $(GOBIN)/agent-trust-discovery ./cmd/agent-trust-discovery
+	@go build $(GOFLAGS) -o $(GOBIN)/agent-ra-sync ./cmd/agent-ra-sync
+	@go build $(GOFLAGS) -o $(GOBIN)/agent-hydrator-stub ./cmd/agent-hydrator-stub
+	@go build $(GOFLAGS) -o $(GOBIN)/agent-prober ./cmd/agent-prober
+	@bash scripts/demo/run-demo-ra.sh
 
 # ─── Test ───────────────────────────────────────────────────────────
 
