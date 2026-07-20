@@ -1,0 +1,8 @@
+# agent-ra-sync config. Points at a (private) ANS RA's public event feed and its
+# Transparency Log. CLI flags (--ra-url/--tl-url/--out/--page-size) override.
+#
+# The feed is anonymous; no credentials are configured or sent.
+raUrl:    http://localhost:18080   # ans-ra: GET /v1/agents/events
+tlUrl:    http://localhost:18081   # ans-tl: GET /v1/agents/{ansId}
+out:      fixtures/ra-sync
+pageSize: 100                       # 1..200
