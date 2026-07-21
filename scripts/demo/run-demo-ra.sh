@@ -15,6 +15,25 @@ OUT="${OUT:-fixtures/ra-sync}"
 RA_URL="${RA_URL:-http://localhost:18080}"
 TL_URL="${TL_URL:-http://localhost:18081}"
 
+# Free :$PORT if a previous demo server (e.g. the /tmp tier-demo server, which
+# stays up by design) is still bound. Otherwise our fresh server can't bind,
+# the readiness check below silently passes against the STALE server, and
+# imported agents accumulate in it across runs instead of showing a clean set.
+STALE_PIDS=$(lsof -ti "tcp:$PORT" -sTCP:LISTEN 2>/dev/null || true)
+if [ -n "$STALE_PIDS" ]; then
+	echo "▶ :$PORT already in use by pid(s) $STALE_PIDS — stopping them for a clean run…"
+	# shellcheck disable=SC2086
+	kill $STALE_PIDS 2>/dev/null || true
+	for _ in $(seq 1 20); do
+		[ -z "$(lsof -ti "tcp:$PORT" -sTCP:LISTEN 2>/dev/null || true)" ] && break
+		sleep 0.1
+	done
+	if [ -n "$(lsof -ti "tcp:$PORT" -sTCP:LISTEN 2>/dev/null || true)" ]; then
+		echo "✗ could not free :$PORT — stop the process manually and re-run." >&2
+		exit 1
+	fi
+fi
+
 rm -f "$DB"
 
 echo "▶ capturing from RA feed $RA_URL (TL $TL_URL) via agent-ra-sync..."
