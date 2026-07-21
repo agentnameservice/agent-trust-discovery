@@ -173,12 +173,13 @@ done
 # ── Stop 9: synthesized observations → different profiles ─────────────
 stop 9 "Synthesized observations: driving agents to different profiles"
 cat <<'EOS'
-  The STOP 8 scores are real (capture + live probing) — all UNTRUSTED because these are
-  freshly-registered agents (agentage≈0, no reachable DNS/TLS). To show the full
-  recommendedProfile cascade, we now POST *synthesized* observation sets (clearly NOT
-  real signals) to drive up to four agents to distinct tiers. agentage≈0 caps integrity
-  at ~86 (6 of 7 integrity signals), so FIDUCIARY is reached with every non-age integrity
-  signal matched + certtype=EV.
+  The STOP 8 scores above are real — whatever the capture + live probing produced
+  (freshly-registered agents tend to sit at UNTRUSTED; live prod agents vary). To show
+  the full recommendedProfile cascade regardless, we now overlay *synthesized* observation
+  sets (clearly NOT real signals) to drive up to four ACTIVE agents to distinct tiers:
+  UNTRUSTED / READ_ONLY / TRANSACTIONAL / FIDUCIARY. FIDUCIARY needs every non-age
+  integrity signal matched plus certtype=EV — agentage is derived from real elapsed time,
+  so it can't be synthesized (it only helps, never hurts).
 EOS
 
 # Stamp newer than earlier synthesized obs (stops 4-6 used +1h) so these win.
