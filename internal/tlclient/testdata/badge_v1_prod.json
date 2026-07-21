@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "V1",
+  "status": "EXPIRED",
+  "payload": {
+    "producer": {
+      "event": {
+        "ansId": "121072b1-79d5-4d2f-8eba-298addcb53d3",
+        "issuedAt": "2026-03-23T19:20:59.356812Z",
+        "timestamp": "2026-03-23T19:32:40.047508Z",
+        "agent": {
+          "host": "corn-futures.aginttest.net",
+          "name": "Corn Futures",
+          "version": "v1.0.0"
+        },
+        "attestations": {
+          "dnsRecordsProvisioned": {
+            "_ans-badge.corn-futures.aginttest.net": "v=ans-badge1; version=v1.0.0; url=https://transparency.ans.godaddy.com/v1/agents/121072b1-79d5-4d2f-8eba-298addcb53d3",
+            "_ans.corn-futures.aginttest.net": "v=ans1; version=v1.0.0; p=a2a; mode=direct; url=https://corn-futures.aginttest.net/"
+          },
+          "domainValidation": "ACME-DNS-01",
+          "identityCert": {
+            "fingerprint": "SHA256:fa2bbcdada9d2f6cc8b3034cac67cec07144f7aaa87933127a5e6067d0c64991",
+            "type": "X509-OV-CLIENT"
+          },
+          "serverCert": {
+            "fingerprint": "SHA256:2ed286d0c5ab2a9c0fa13c47785ee6409a25a9492219c44b26ae0dcbaa169d30",
+            "type": "X509-DV-SERVER"
+          }
+        }
+      }
+    }
+  }
+}
