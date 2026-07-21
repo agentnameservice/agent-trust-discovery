@@ -2,6 +2,7 @@ package rasync
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -59,7 +60,7 @@ func Run(ctx context.Context, feed FeedFetcher, tl TLFetcher, cfg Config, logger
 	// window in which everything aged out) would otherwise look to the hydrator
 	// like "zero agents" and silently drop all trust data.
 	if len(agents) == 0 {
-		return Summary{}, fmt.Errorf("rasync: feed returned no agents in the retention window; refusing to produce an empty fixture set")
+		return Summary{}, errors.New("rasync: feed returned no agents in the retention window; refusing to produce an empty fixture set")
 	}
 
 	outDir := filepath.Join(cfg.OutDir, "tl-events")

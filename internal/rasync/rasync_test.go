@@ -96,7 +96,7 @@ func TestRun_WritesParseableFixtures(t *testing.T) {
 	tl := fakeTL{
 		byID: map[string]tlevent.Event{
 			"a1": {FirstSeen: "2025-01-01T00:00:00Z", LastUpdated: "2025-01-01T00:00:00Z",
-				Agent: tlevent.Agent{Host: "x", Version: "v1.0.0", Name: "X"},
+				Agent:        tlevent.Agent{Host: "x", Version: "v1.0.0", Name: "X"},
 				Attestations: tlevent.Attestations{ServerCert: tlevent.CertAttestation{Fingerprint: "SHA256:a1"}}},
 		},
 		failFor: map[string]bool{"a2": true}, // a2 → feed-only fallback
