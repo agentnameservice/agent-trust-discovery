@@ -31,8 +31,9 @@ type Config struct {
 
 // Summary reports what a run captured.
 type Summary struct {
-	AgentsCaptured int
-	TLFetchErrors  int // agents the feed surfaced but the TL badge failed for (feed-only fixture written)
+	AgentsCaptured  int
+	TLFetchErrors   int // agents the feed surfaced but the TL badge failed for (feed-only fixture written)
+	ValidationDrops int // folded agents whose projected event failed validation and were dropped (not written)
 }
 
 const defaultPageSize = 100
@@ -81,6 +82,7 @@ func Run(ctx context.Context, feed FeedFetcher, tl TLFetcher, cfg Config, logger
 		if verr := ev.Validate(); verr != nil {
 			logger.WarnContext(ctx, "rasync: projected event failed validation; skipping",
 				"agentId", id, "error", verr.Error())
+			summary.ValidationDrops++
 			continue
 		}
 		if werr := writeFixture(outDir, ev); werr != nil {
@@ -90,7 +92,8 @@ func Run(ctx context.Context, feed FeedFetcher, tl TLFetcher, cfg Config, logger
 	}
 
 	logger.InfoContext(ctx, "rasync: capture complete",
-		"agentsCaptured", summary.AgentsCaptured, "tlFetchErrors", summary.TLFetchErrors, "outDir", outDir)
+		"agentsCaptured", summary.AgentsCaptured, "tlFetchErrors", summary.TLFetchErrors,
+		"validationDrops", summary.ValidationDrops, "outDir", outDir)
 
 	if summary.AgentsCaptured == 0 {
 		return summary, fmt.Errorf("rasync: %d folded agents but 0 written; refusing to produce empty snapshot", len(agents))

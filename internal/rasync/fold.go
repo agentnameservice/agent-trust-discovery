@@ -10,6 +10,12 @@ import (
 	"github.com/agentnameservice/agent-trust-discovery/internal/raclient"
 )
 
+// maxFeedPages caps how many pages drainAndFold will fetch in one run. It is a
+// safety valve against a buggy or adversarial feed whose cursor advances
+// forever: at the default page size of 100 this still allows ~1M events, well
+// beyond any realistic capture, so a legitimate drain never hits it.
+const maxFeedPages = 10_000
+
 // FeedFetcher is the subset of raclient.Client the producer needs; satisfied by
 // *raclient.Client and test doubles.
 type FeedFetcher interface {
@@ -50,11 +56,13 @@ func statusForEventType(eventType string) string {
 // drainAndFold pages the feed from the oldest retained row to the tail, folding
 // events into a current agent set keyed by AgentID. The feed is ordered by
 // ascending log id, so the last event seen for an agent is the newest and wins.
-// Paging stops at an empty page or when the returned cursor does not advance.
+// Paging stops at an empty page or when the returned cursor does not advance,
+// and is bounded by maxFeedPages so a feed whose cursor advances forever aborts
+// with an error rather than draining unboundedly.
 func drainAndFold(ctx context.Context, feed FeedFetcher, baseURL string, pageSize int) (map[string]foldedAgent, error) {
 	agents := make(map[string]foldedAgent)
 	cursor := ""
-	for {
+	for pages := 0; pages < maxFeedPages; pages++ {
 		page, err := feed.FetchEvents(ctx, baseURL, cursor, pageSize)
 		if err != nil {
 			return nil, fmt.Errorf("rasync: fetch events (cursor=%q): %w", cursor, err)
@@ -67,6 +75,7 @@ func drainAndFold(ctx context.Context, feed FeedFetcher, baseURL string, pageSiz
 		}
 		cursor = page.LastLogID
 	}
+	return nil, fmt.Errorf("rasync: feed did not terminate after %d pages (pageSize=%d); aborting unbounded drain", maxFeedPages, pageSize)
 }
 
 // applyEvent folds one event into the agent set. Unknown eventTypes are skipped.
@@ -77,20 +86,39 @@ func applyEvent(agents map[string]foldedAgent, it raclient.EventItem) {
 	}
 	fa := agents[it.AgentID] // zero value on first sight
 
-	// Latest event wins for the mutable fields.
+	// The AgentID and the lifecycle status/timestamp always reflect the latest
+	// event (the whole point of a revoke/deprecate event is its status). The
+	// descriptive metadata fields are overwritten only when the event actually
+	// carries a value, so a sparse status-change event (e.g. an AGENT_REVOKED
+	// that omits the agent block) updates status without blanking the
+	// host/version/name/description/endpoints an earlier event established.
 	fa.AgentID = it.AgentID
-	fa.AnsName = it.AnsName
-	fa.Host = it.AgentHost
-	fa.Version = it.Version
-	fa.DisplayName = it.AgentDisplayName
-	fa.Description = it.AgentDescription
 	fa.Status = status
-	fa.LastUpdated = it.CreatedAt
-	fa.Endpoints = it.Endpoints
+	if it.CreatedAt != "" {
+		fa.LastUpdated = it.CreatedAt
+	}
+	if it.AnsName != "" {
+		fa.AnsName = it.AnsName
+	}
+	if it.AgentHost != "" {
+		fa.Host = it.AgentHost
+	}
+	if it.Version != "" {
+		fa.Version = it.Version
+	}
+	if it.AgentDisplayName != "" {
+		fa.DisplayName = it.AgentDisplayName
+	}
+	if it.AgentDescription != "" {
+		fa.Description = it.AgentDescription
+	}
+	if len(it.Endpoints) > 0 {
+		fa.Endpoints = it.Endpoints
+	}
 
 	// firstSeen fallback = earliest AGENT_REGISTERED createdAt (feed is ascending,
 	// so the first one seen is the earliest).
-	if it.EventType == raclient.EventTypeAgentRegistered && fa.FirstSeenFallback == "" {
+	if it.EventType == raclient.EventTypeAgentRegistered && fa.FirstSeenFallback == "" && it.CreatedAt != "" {
 		fa.FirstSeenFallback = it.CreatedAt
 	}
 

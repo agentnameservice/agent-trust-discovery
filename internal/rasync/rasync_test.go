@@ -2,6 +2,7 @@ package rasync
 
 import (
 	"context"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -117,6 +118,31 @@ func TestRun_WritesParseableFixtures(t *testing.T) {
 		if _, perr := tlevent.ParseEvent(b); perr != nil {
 			t.Errorf("fixture %s does not parse: %v", id, perr)
 		}
+	}
+}
+
+func TestRun_TracksValidationDrops(t *testing.T) {
+	// One valid agent and one that projects to an invalid event (no host,
+	// version, or display name → tlevent validation fails). The invalid one is
+	// dropped, but the drop must be counted in the Summary, not only logged.
+	feed := &fakeFeed{pages: []raclient.EventPage{
+		{Items: []raclient.EventItem{
+			{LogID: "1", EventType: "AGENT_REGISTERED", CreatedAt: "2026-01-01T00:00:00Z",
+				AgentID: "good", AgentHost: "x", Version: "v1.0.0", AgentDisplayName: "X"},
+			{LogID: "2", EventType: "AGENT_REGISTERED", CreatedAt: "2026-01-01T00:00:00Z",
+				AgentID: "bad"}, // no host/version/name
+		}, LastLogID: "2"},
+	}}
+	dir := t.TempDir()
+	sum, err := Run(context.Background(), feed, fakeTL{}, Config{RABaseURL: "http://ra", TLBaseURL: "http://tl", OutDir: dir, PageSize: 100}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if sum.AgentsCaptured != 1 {
+		t.Errorf("AgentsCaptured = %d, want 1", sum.AgentsCaptured)
+	}
+	if sum.ValidationDrops != 1 {
+		t.Errorf("ValidationDrops = %d, want 1", sum.ValidationDrops)
 	}
 }
 
