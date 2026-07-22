@@ -36,20 +36,36 @@ type Summary struct {
 	ValidationDrops int // folded agents whose projected event failed validation and were dropped (not written)
 }
 
-const defaultPageSize = 100
+const (
+	defaultPageSize = 100
+	maxPageSize     = 200
+)
+
+// normalizePageSize clamps a configured feed page size into the RA feed's valid
+// 1..200 range: a non-positive value falls back to the default, and anything
+// above the maximum is capped so the feed never receives an out-of-range limit
+// (which would surface as a 4xx rather than a predictable capture).
+func normalizePageSize(n int) int {
+	switch {
+	case n <= 0:
+		return defaultPageSize
+	case n > maxPageSize:
+		return maxPageSize
+	default:
+		return n
+	}
+}
 
 // Run drains the feed, folds to a current agent set, enriches each with TL
 // baselines, and writes the tl-events/ fixtures the hydrator/prober consume.
-// The tl-events/ dir is wiped and rewritten each run. A TL badge miss degrades
-// that agent to a feed-only fixture (empty attestations), never aborts the run.
+// Each run removes the existing *.yaml fixtures in tl-events/ and rewrites them
+// (any non-.yaml files are left untouched). A TL badge miss degrades that agent
+// to a feed-only fixture (empty attestations), never aborts the run.
 func Run(ctx context.Context, feed FeedFetcher, tl TLFetcher, cfg Config, logger *slog.Logger) (Summary, error) {
 	if logger == nil {
 		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	}
-	pageSize := cfg.PageSize
-	if pageSize <= 0 {
-		pageSize = defaultPageSize
-	}
+	pageSize := normalizePageSize(cfg.PageSize)
 
 	agents, err := drainAndFold(ctx, feed, cfg.RABaseURL, pageSize)
 	if err != nil {

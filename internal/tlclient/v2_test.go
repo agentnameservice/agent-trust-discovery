@@ -155,12 +155,23 @@ func TestPrimaryCertFingerprint(t *testing.T) {
 			want: "NEWEST",
 		},
 		{
-			name: "tie falls back to first entry",
+			name: "tie among newest keeps the first newest entry",
 			certs: []tlCertV2{
 				{Fingerprint: "FIRST", NotAfter: "2027-01-01T00:00:00Z"},
 				{Fingerprint: "TIED", NotAfter: "2027-01-01T00:00:00Z"},
 			},
 			want: "FIRST",
+		},
+		{
+			// certs[0] is NOT among the newest, and the two newest tie. The
+			// result must be the first of the newest (NEW_FIRST), never certs[0].
+			name: "tie among newest ignores an older certs[0]",
+			certs: []tlCertV2{
+				{Fingerprint: "OLD", NotAfter: "2026-01-01T00:00:00Z"},
+				{Fingerprint: "NEW_FIRST", NotAfter: "2027-06-15T00:00:00Z"},
+				{Fingerprint: "NEW_SECOND", NotAfter: "2027-06-15T00:00:00Z"},
+			},
+			want: "NEW_FIRST",
 		},
 		{
 			name: "all unparseable falls back to first entry",

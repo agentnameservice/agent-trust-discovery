@@ -9,7 +9,7 @@ import (
 // Internal wire structs for the V2 (reference ans-tl) TL response. Fields
 // shared byte-for-byte with V1 — ansId, issuedAt, timestamp, agent.{host,
 // version,name}, the response-root status — reuse the V1 types (tlEventAgent)
-// directly; only attestations differs in shape.
+// directly; only attestations differ in shape.
 type tlResponseV2 struct {
 	Payload tlPayloadV2 `json:"payload"`
 	Status  string      `json:"status"`
@@ -92,9 +92,10 @@ func mapEventV2(in tlEventV2, topLevelStatus string) tlevent.Event {
 // primaryCertFingerprint picks the fingerprint of the cert entry with the
 // newest notAfter (RFC 3339) from a V2 cert array — the "primary" fingerprint
 // mapEventV2 maps into the RI's single-cert field (see the package doc's
-// cert-set limitation). On a tie for the newest notAfter, or when no entry's
-// notAfter parses, it falls back to the first array entry so the result is
-// still deterministic. An empty array yields an empty fingerprint.
+// cert-set limitation). On a tie for the newest notAfter it deterministically
+// keeps the first entry among those newest; when no entry's notAfter parses it
+// falls back to the first array entry. An empty array yields an empty
+// fingerprint.
 //
 // Full set-membership drift matching across the array remains tlclient's
 // documented deferred follow-up; this only selects one primary per slot.
@@ -103,26 +104,22 @@ func primaryCertFingerprint(certs []tlCertV2) string {
 		return ""
 	}
 
+	// bestIdx starts at the first entry and only advances on a strictly-newer
+	// notAfter, never on an equal one — so among ties for the newest notAfter
+	// the first such entry deterministically wins. If no entry's notAfter
+	// parses, bestIdx stays 0 (the first array entry).
 	bestIdx := 0
 	var bestTime time.Time
 	bestValid := false
-	tie := false
 
 	for i, c := range certs {
 		t, err := time.Parse(time.RFC3339, c.NotAfter)
 		if err != nil {
 			continue
 		}
-		switch {
-		case !bestValid || t.After(bestTime):
-			bestIdx, bestTime, bestValid, tie = i, t, true, false
-		case t.Equal(bestTime):
-			tie = true
+		if !bestValid || t.After(bestTime) {
+			bestIdx, bestTime, bestValid = i, t, true
 		}
-	}
-
-	if !bestValid || tie {
-		bestIdx = 0
 	}
 	return certs[bestIdx].Fingerprint
 }

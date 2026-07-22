@@ -15,13 +15,22 @@ OUT="${OUT:-fixtures/ra-sync}"
 RA_URL="${RA_URL:-http://localhost:18080}"
 TL_URL="${TL_URL:-http://localhost:18081}"
 
-# Free :$PORT if a previous demo server (e.g. the /tmp tier-demo server, which
-# stays up by design) is still bound. Otherwise our fresh server can't bind,
-# the readiness check below silently passes against the STALE server, and
-# imported agents accumulate in it across runs instead of showing a clean set.
+# If :$PORT is already bound (e.g. by a previous demo server, or the /tmp
+# tier-demo server that stays up by design) our fresh server can't bind — and
+# the readiness check below would silently pass against the STALE server, so
+# imported agents would accumulate across runs instead of showing a clean set.
+#
+# Killing whatever holds the port is destructive on a dev machine, so it is
+# opt-in: set KILL_STALE=1 to have this script stop the offending process(es);
+# otherwise it fails fast and asks you to free the port yourself.
 STALE_PIDS=$(lsof -ti "tcp:$PORT" -sTCP:LISTEN 2>/dev/null || true)
 if [ -n "$STALE_PIDS" ]; then
-	echo "▶ :$PORT already in use by pid(s) $STALE_PIDS — stopping them for a clean run…"
+	if [ "${KILL_STALE:-0}" != "1" ]; then
+		echo "✗ :$PORT already in use by pid(s) $STALE_PIDS." >&2
+		echo "  Free it and re-run, or re-run with KILL_STALE=1 to stop them automatically." >&2
+		exit 1
+	fi
+	echo "▶ :$PORT already in use by pid(s) $STALE_PIDS — KILL_STALE=1 set, stopping them for a clean run…"
 	# shellcheck disable=SC2086
 	kill $STALE_PIDS 2>/dev/null || true
 	for _ in $(seq 1 20); do

@@ -146,6 +146,26 @@ func TestRun_TracksValidationDrops(t *testing.T) {
 	}
 }
 
+func TestNormalizePageSize(t *testing.T) {
+	cases := map[string]struct {
+		in, want int
+	}{
+		"zero falls back to default":     {0, defaultPageSize},
+		"negative falls back to default": {-5, defaultPageSize},
+		"in range is unchanged":          {50, 50},
+		"lower bound is unchanged":       {1, 1},
+		"upper bound is unchanged":       {maxPageSize, maxPageSize},
+		"above max is clamped":           {500, maxPageSize},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			if got := normalizePageSize(tc.in); got != tc.want {
+				t.Errorf("normalizePageSize(%d) = %d, want %d", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestRun_RefusesEmptyFeed(t *testing.T) {
 	feed := &fakeFeed{pages: []raclient.EventPage{{Items: nil, LastLogID: ""}}}
 	dir := t.TempDir()
