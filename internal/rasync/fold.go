@@ -62,7 +62,7 @@ func statusForEventType(eventType string) string {
 func drainAndFold(ctx context.Context, feed FeedFetcher, baseURL string, pageSize int) (map[string]foldedAgent, error) {
 	agents := make(map[string]foldedAgent)
 	cursor := ""
-	for pages := 0; pages < maxFeedPages; pages++ {
+	for range maxFeedPages {
 		page, err := feed.FetchEvents(ctx, baseURL, cursor, pageSize)
 		if err != nil {
 			return nil, fmt.Errorf("rasync: fetch events (cursor=%q): %w", cursor, err)
