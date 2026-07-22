@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/agentnameservice/agent-trust-discovery/internal/domain"
 	"github.com/agentnameservice/agent-trust-discovery/internal/raclient"
 )
 
@@ -37,17 +38,18 @@ type foldedAgent struct {
 	Endpoints         []raclient.Endpoint
 }
 
-// statusForEventType maps a feed eventType to a domain lifecycle status. An
+// statusForEventType maps a feed eventType to a domain lifecycle status string
+// (the domain package is the single source of truth for these values). An
 // unrecognized eventType returns "" so the caller can skip it (fail-soft,
 // mirroring the finder's unknown-eventType handling).
 func statusForEventType(eventType string) string {
 	switch eventType {
 	case raclient.EventTypeAgentRegistered, raclient.EventTypeAgentRenewed:
-		return "ACTIVE"
+		return string(domain.StatusActive)
 	case raclient.EventTypeAgentRevoked:
-		return "REVOKED"
+		return string(domain.StatusRevoked)
 	case raclient.EventTypeAgentDeprecated:
-		return "DEPRECATED"
+		return string(domain.StatusDeprecated)
 	default:
 		return ""
 	}
