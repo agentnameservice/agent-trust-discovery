@@ -1,0 +1,12 @@
+# agent-prober config for the ra-sync demo. Same binary/code as always — only
+# tlEventsDir points at the ra-sync capture.
+target:
+  url: http://localhost:8080
+  adminKey: ""
+source:
+  tlEventsDir: fixtures/ra-sync/tl-events
+probe:
+  cadence: 0
+  timeout: 10s
+provenance:
+  aimId: did:web:ra-sync-demo-prober.local

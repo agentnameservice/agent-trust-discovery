@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "V2",
+  "status": "ACTIVE",
+  "payload": {
+    "producer": {
+      "event": {
+        "ansId": "73020903-9917-4e5e-972f-36f76f3c7e1a",
+        "issuedAt": "2026-07-21T15:11:26Z",
+        "timestamp": "2026-07-21T15:11:26Z",
+        "agent": {
+          "host": "demo-819792fd.example.com",
+          "name": "demo-agent",
+          "version": "1.0.0"
+        },
+        "attestations": {
+          "dnsRecordsProvisioned": [
+            {
+              "data": "v=ans1; version=v1.0.0; p=mcp; mode=direct; url=https://demo-819792fd.example.com/mcp",
+              "name": "_ans.demo-819792fd.example.com",
+              "type": "TXT"
+            },
+            {
+              "data": "1 . alpn=h2",
+              "name": "demo-819792fd.example.com",
+              "type": "HTTPS"
+            },
+            {
+              "data": "v=ans-badge1; version=v1.0.0; url=https://localhost:18081/v1/agents/73020903-9917-4e5e-972f-36f76f3c7e1a",
+              "name": "_ans-badge.demo-819792fd.example.com",
+              "type": "TXT"
+            },
+            {
+              "data": "3 0 1 c15286f12f34d1231b49a02963b8c7d0cfbd957b9f64641fdcc5fc7219343389",
+              "name": "_443._tcp.demo-819792fd.example.com",
+              "type": "TLSA"
+            }
+          ],
+          "domainValidation": "ACME-DNS-01",
+          "identityCerts": [
+            {
+              "fingerprint": "SHA256:56237c3e19206707ccd0f4d1effa6fbf1a4a784e34cdf74ae6320517ceead1b3",
+              "notAfter": "2026-10-19T15:11:26Z",
+              "type": "X509-OV-CLIENT"
+            }
+          ],
+          "serverCerts": [
+            {
+              "fingerprint": "SHA256:c15286f12f34d1231b49a02963b8c7d0cfbd957b9f64641fdcc5fc7219343389",
+              "notAfter": "2026-10-19T15:11:26Z",
+              "type": "X509-DV-SERVER"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

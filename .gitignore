@@ -4,6 +4,9 @@
 # Live snapshot output (captured prod data; should never be committed).
 /fixtures/snapshot/
 
+# ra-sync capture output (captured from a private ANS RA; should never be committed).
+/fixtures/ra-sync/
+
 # Coverage artifacts
 coverage.out
 coverage.domain.out

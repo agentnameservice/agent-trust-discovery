@@ -1,13 +1,26 @@
 // Package tlclient is a thin read-only HTTP client for the public
-// Transparency Log endpoint GET /v1/agents/{ansId}. It maps the prod TL
-// response into the RI's tlevent.Event shape so cmd/agent-snapshot can persist
-// the sealed baseline as fixture YAML the existing hydrator/prober consume
+// Transparency Log endpoint GET /v1/agents/{ansId}. It maps the TL response
+// into the RI's tlevent.Event shape so cmd/agent-snapshot can persist the
+// sealed baseline as fixture YAML the existing hydrator/prober consume
 // unchanged.
 //
-// Cert-set limitation (v1): prod carries validServerCerts[] (a set with
-// notAfter); we map the primary serverCert.fingerprint into the single RI
-// field, so drift compares against the primary only. Full set-membership
-// matching is a deliberate follow-up (plan §2 / design §9).
+// It decodes both TL badge schemas seen in practice, selected by the
+// response's top-level "schemaVersion" discriminator:
+//   - "V1" (prod GoDaddy TL): singleton serverCert/identityCert objects,
+//     dnsRecordsProvisioned as a map[fqdn]value.
+//   - "V2" (the reference ans-tl): plural serverCerts/identityCerts arrays
+//     (each entry carrying notAfter), dnsRecordsProvisioned as an array of
+//     {data,name,type}.
+//
+// An empty or unrecognized schemaVersion (e.g. a future V3) falls back to
+// the V1 shape; see v2.go for the V2 decode path.
+//
+// Cert-set limitation: both schemas can carry more than one cert per slot
+// (prod's validServerCerts[], the reference's serverCerts[]/identityCerts[]);
+// we map only the primary fingerprint into the single RI field (V1: the
+// lone object; V2: the entry with the newest notAfter), so drift compares
+// against the primary only. Full set-membership matching is a deliberate
+// follow-up (plan §2 / design §9).
 package tlclient
 
 import (
@@ -46,8 +59,8 @@ func New(httpClient *http.Client) *Client {
 	return &Client{httpClient: httpClient}
 }
 
-// Internal wire structs for the prod TL response. Only the fields we map are
-// declared; everything else is ignored.
+// Internal wire structs for the V1 (prod) TL response. Only the fields we
+// map are declared; everything else is ignored.
 //
 // Notable shape detail: `status` lives at the response root (not inside
 // payload.producer.event); the agent's effective registration timestamps are
@@ -135,6 +148,28 @@ func (c *Client) Fetch(ctx context.Context, baseURL, ansID string) (tlevent.Even
 	if int64(len(raw)) > maxResponseBodyBytes {
 		return tlevent.Event{}, ErrResponseTooLarge
 	}
+	// The two schemas are incompatible at the Go type level (V1's attestations
+	// are singleton objects, V2's are arrays), so we can't decode both with
+	// one struct. Probe the top-level schemaVersion discriminator first — a
+	// minimal, always-succeeding decode — and only then unmarshal raw into
+	// the matching full struct.
+	var schema struct {
+		SchemaVersion string `json:"schemaVersion"`
+	}
+	if err := json.Unmarshal(raw, &schema); err != nil {
+		return tlevent.Event{}, fmt.Errorf("tlclient: decode response: %w", err)
+	}
+
+	if schema.SchemaVersion == "V2" {
+		var body tlResponseV2
+		if err := json.Unmarshal(raw, &body); err != nil {
+			return tlevent.Event{}, fmt.Errorf("tlclient: decode response: %w", err)
+		}
+		return mapEventV2(body.Payload.Producer.Event, body.Status), nil
+	}
+
+	// "V1", empty, or any unrecognized schemaVersion (a future V3 is out of
+	// scope) fall back to the V1 shape, unchanged.
 	var body tlResponse
 	if err := json.Unmarshal(raw, &body); err != nil {
 		return tlevent.Event{}, fmt.Errorf("tlclient: decode response: %w", err)

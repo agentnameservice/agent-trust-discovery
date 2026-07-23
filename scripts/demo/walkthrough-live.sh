@@ -159,16 +159,91 @@ print('  {:16} trustVector=({}) recommendedProfile={}'.format('$p', vec, te['rec
 done
 
 # ── Stop 8: summary table ─────────────────────────────────────────────
-stop 8 "Summary table — one row per agent"
-printf '  %-36s %-11s %4s %4s %4s %4s %4s  %-14s %s\n' agentId status int idn slv beh saf recommended risks
+stop 8 "Summary — real observations (one row per agent)"
+printf '  %-36s %-11s %4s %4s  %-14s %s\n' agentId status int idn recommended risks
 ids=$(get "$RO?pageSize=100" | py '[print(a["agentId"]) for a in d["items"]]')
 for id in $ids; do
   get "$RO/$id" | py "
 te=d['trustEvaluation']; tv=te['trustVector'];
-print('  {:<36} {:<11} {:>4} {:>4} {:>4} {:>4} {:>4}  {:<14} {}'.format(
-  d['agentId'], d['status'], tv['integrity'], tv['identity'], tv['solvency'], tv['behavior'], tv['safety'],
+print('  {:<36} {:<11} {:>4} {:>4}  {:<14} {}'.format(
+  d['agentId'], d['status'], tv['integrity'], tv['identity'],
   te['recommendedProfile'], len(te['riskFactors'])))"
 done
+
+# ── Stop 9: synthesized observations → different profiles ─────────────
+stop 9 "Synthesized observations: driving agents to different profiles"
+cat <<'EOS'
+  The STOP 8 scores above are real — whatever the capture + live probing produced
+  (freshly-registered agents tend to sit at UNTRUSTED; live prod agents vary). To show
+  the full recommendedProfile cascade regardless, we now overlay *synthesized* observation
+  sets (clearly NOT real signals) to drive up to four ACTIVE agents to distinct tiers:
+  UNTRUSTED / READ_ONLY / TRANSACTIONAL / FIDUCIARY. FIDUCIARY needs every non-age
+  integrity signal matched plus certtype=EV — agentage is derived from real elapsed time,
+  so it can't be synthesized (it only helps, never hurts).
+EOS
+
+# Stamp newer than earlier synthesized obs (stops 4-6 used +1h) so these win.
+TS2=$(python3 -c 'import datetime;print((datetime.datetime.now(datetime.timezone.utc)+datetime.timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%SZ"))')
+DUMMY_FP="SHA256:$(python3 -c "print('a'*64)")"
+
+postobs() { # $1=agentId $2=signalId $3=value-json
+  curl -fsS -X POST "$BASE/v1/internal/observations/import" -H 'Content-Type: application/json' \
+    -d "{\"observations\":[{\"agentId\":\"$1\",\"signalId\":\"$2\",\"observedAt\":\"$TS2\",\"value\":$3}]}" >/dev/null
+}
+
+apply_tier() { # $1=agentId $2=target
+  case "$2" in
+    UNTRUSTED)
+      postobs "$1" certtype '{"type":"none"}' ;;
+    READ_ONLY)
+      postobs "$1" certtype '{"type":"DV"}'
+      postobs "$1" dnssecurity '{"dnssec":true,"caa":true}'
+      postobs "$1" versionstability '{"versionChanges30d":0}' ;;
+    TRANSACTIONAL)
+      postobs "$1" certtype '{"type":"OV"}'
+      postobs "$1" dnssecurity '{"dnssec":true,"caa":true}'
+      postobs "$1" versionstability '{"versionChanges30d":0}'
+      postobs "$1" dnsrecord.ans '{"expected":"a","observed":"a","matched":true}'
+      postobs "$1" dnsrecord.ans-badge '{"expected":"a","observed":"a","matched":true}' ;;
+    FIDUCIARY)
+      postobs "$1" certtype '{"type":"EV"}'
+      postobs "$1" dnssecurity '{"dnssec":true,"caa":true}'
+      postobs "$1" versionstability '{"versionChanges30d":0}'
+      postobs "$1" dnsrecord.ans '{"expected":"a","observed":"a","matched":true}'
+      postobs "$1" dnsrecord.ans-badge '{"expected":"a","observed":"a","matched":true}'
+      postobs "$1" certfingerprint.server "{\"expected\":\"$DUMMY_FP\",\"observed\":\"$DUMMY_FP\",\"matched\":true}"
+      postobs "$1" certfingerprint.identity "{\"expected\":\"$DUMMY_FP\",\"observed\":\"$DUMMY_FP\",\"matched\":true}" ;;
+  esac
+}
+
+TARGETS="UNTRUSTED READ_ONLY TRANSACTIONAL FIDUCIARY"
+# Collect up to 4 ACTIVE agent ids (portable; bash 3.2 has no mapfile).
+TIER_IDS=()
+while IFS= read -r line; do [ -n "$line" ] && TIER_IDS+=("$line"); done < <(get "$RO?pageSize=100&statuses=ACTIVE" | py '[print(a["agentId"]) for a in d["items"][:4]]')
+N=${#TIER_IDS[@]}
+[ "$N" -lt 4 ] && echo "  (only $N ACTIVE agent(s) — showing the first $N tier(s); register 4+ for the full demo)"
+
+# Apply the i-th tier recipe to the i-th agent.
+i=0
+for tgt in $TARGETS; do
+  [ "$i" -ge "$N" ] && break
+  apply_tier "${TIER_IDS[$i]}" "$tgt"
+  i=$((i + 1))
+done
+
+# Focused table: target vs achieved (✓ when they match).
+echo
+printf '  %-36s %-14s %4s %4s  %-14s %s\n' agentId target int idn recommended ok
+i=0
+for tgt in $TARGETS; do
+  [ "$i" -ge "$N" ] && break
+  get "$RO/${TIER_IDS[$i]}" | py "
+te=d['trustEvaluation']; tv=te['trustVector']; got=te['recommendedProfile']
+ok='✓' if got=='$tgt' else '✗'
+print('  {:<36} {:<14} {:>4} {:>4}  {:<14} {}'.format(d['agentId'], '$tgt', tv['integrity'], tv['identity'], got, ok))"
+  i=$((i + 1))
+done
+
 hr
 CAPTURED=$(get "$RO?pageSize=100&totalRequired=true" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("totalItems",""))')
 echo "  Walkthrough complete."

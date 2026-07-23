@@ -1,0 +1,12 @@
+# agent-hydrator-stub config for the ra-sync demo. Reads fixtures captured by
+# agent-ra-sync. real mode → imports agents only; agent-prober supplies live
+# observations (identical topology to hydrator.snapshot.yaml, different dir).
+mode: real
+target:
+  url: http://localhost:8080
+  adminKey: ""
+source:
+  tlEventsDir:     fixtures/ra-sync/tl-events   # written by agent-ra-sync
+  observationsDir: fixtures/observations         # unused in real mode
+provenance:
+  aimId: did:web:ra-sync-demo-aim.local
