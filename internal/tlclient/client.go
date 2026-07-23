@@ -66,9 +66,8 @@ func New(httpClient *http.Client) *Client {
 // payload.producer.event); the agent's effective registration timestamps are
 // `issuedAt` and `timestamp` on the event (not firstSeen/lastUpdated).
 type tlResponse struct {
-	Payload       tlPayload `json:"payload"`
-	Status        string    `json:"status"`
-	SchemaVersion string    `json:"schemaVersion"`
+	Payload tlPayload `json:"payload"`
+	Status  string    `json:"status"`
 }
 
 type tlPayload struct {

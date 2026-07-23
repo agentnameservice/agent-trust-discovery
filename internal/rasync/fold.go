@@ -72,7 +72,7 @@ func drainAndFold(ctx context.Context, feed FeedFetcher, baseURL string, pageSiz
 		for i := range page.Items {
 			applyEvent(agents, page.Items[i])
 		}
-		if page.LastLogID == "" || page.LastLogID == cursor || len(page.Items) == 0 {
+		if page.ReachedEnd(cursor) {
 			return agents, nil
 		}
 		cursor = page.LastLogID

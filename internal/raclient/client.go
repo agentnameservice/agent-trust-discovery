@@ -71,6 +71,13 @@ type EventPage struct {
 	LastLogID string      `json:"lastLogId"`
 }
 
+// ReachedEnd reports whether a caller paging through the feed with prevCursor
+// as the last-used cursor should stop: the page carries no next cursor, the
+// cursor didn't advance past prevCursor, or the page was empty.
+func (p EventPage) ReachedEnd(prevCursor string) bool {
+	return p.LastLogID == "" || p.LastLogID == prevCursor || len(p.Items) == 0
+}
+
 // Client is a minimal HTTP wrapper.
 type Client struct {
 	httpClient *http.Client
@@ -84,9 +91,11 @@ func New(httpClient *http.Client) *Client {
 	return &Client{httpClient: httpClient}
 }
 
-// FetchEvents issues GET {baseURL}/v1/agents/events?limit=..&lastLogId=.. and
-// decodes one page. afterLogID is omitted from the query when empty (page from
-// the oldest retained row).
+// FetchEvents issues GET {scheme}://{host}/v1/agents/events?limit=..&lastLogId=..
+// and decodes one page. afterLogID is omitted from the query when empty (page
+// from the oldest retained row). Any path baseURL carries is replaced, not
+// appended — the feed always lives at /v1/agents/events regardless of what
+// path the configured baseURL happens to include.
 func (c *Client) FetchEvents(ctx context.Context, baseURL, afterLogID string, limit int) (EventPage, error) {
 	u, err := buildURL(baseURL, afterLogID, limit)
 	if err != nil {
@@ -128,7 +137,7 @@ func buildURL(baseURL, afterLogID string, limit int) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("raclient: parse baseURL: %w", err)
 	}
-	base.Path = strings.TrimRight(base.Path, "/") + "/v1/agents/events"
+	base.Path = "/v1/agents/events"
 	q := url.Values{}
 	q.Set("limit", strconv.Itoa(limit))
 	if afterLogID != "" {

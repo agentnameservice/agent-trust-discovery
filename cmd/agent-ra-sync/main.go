@@ -9,6 +9,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -30,7 +31,7 @@ func main() {
 	os.Exit(run(os.Args[1:], os.Stderr))
 }
 
-func run(args []string, stderr *os.File) int {
+func run(args []string, stderr io.Writer) int {
 	fs := flag.NewFlagSet("agent-ra-sync", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 
