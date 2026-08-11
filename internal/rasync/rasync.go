@@ -90,6 +90,15 @@ func Run(ctx context.Context, feed FeedFetcher, tl TLFetcher, cfg Config, logger
 		badge, ferr := tl.Fetch(ctx, cfg.TLBaseURL, id)
 		tlOK := ferr == nil
 		if !tlOK {
+			// A cancelled or timed-out context is not a per-agent badge miss:
+			// once the run's deadline expires mid-loop every remaining fetch
+			// fails instantly, so the whole tail would silently degrade to
+			// feed-only fixtures under a green exit. Treat cancellation as a
+			// run abort and keep the degrade path for genuine badge misses.
+			if errors.Is(ferr, context.Canceled) || errors.Is(ferr, context.DeadlineExceeded) {
+				return summary, fmt.Errorf("rasync: tl enrichment aborted after %d/%d agents: %w",
+					summary.AgentsCaptured, len(agents), ferr)
+			}
 			logger.WarnContext(ctx, "rasync: tl badge fetch failed; writing feed-only fixture",
 				"agentId", id, "error", ferr.Error())
 			summary.TLFetchErrors++
@@ -111,6 +120,14 @@ func Run(ctx context.Context, feed FeedFetcher, tl TLFetcher, cfg Config, logger
 		"agentsCaptured", summary.AgentsCaptured, "tlFetchErrors", summary.TLFetchErrors,
 		"validationDrops", summary.ValidationDrops, "outDir", outDir)
 
+	// A total TL outage degrades every agent to a feed-only fixture, which still
+	// increments AgentsCaptured — so the empty-snapshot guard below can't catch
+	// it. With the previous fixtures already wiped by prepareOutDir, that would
+	// replace real baselines with an attestation-free set under a green exit.
+	// snapshot.Run refuses the same case; mirror it here for parity.
+	if summary.TLFetchErrors == len(agents) {
+		return summary, fmt.Errorf("rasync: all %d TL fetches failed; refusing all-degraded capture", len(agents))
+	}
 	if summary.AgentsCaptured == 0 {
 		return summary, fmt.Errorf("rasync: %d folded agents but 0 written; refusing to produce empty snapshot", len(agents))
 	}
@@ -118,10 +135,12 @@ func Run(ctx context.Context, feed FeedFetcher, tl TLFetcher, cfg Config, logger
 }
 
 // toEvent merges a folded feed agent with its TL badge into the fixture Event.
-// When tlOK the badge is authoritative for firstSeen + attestations + host/
-// version; the feed supplies name + description + endpoints. When !tlOK the fold
-// supplies everything and attestations are empty (prober emits non-matching
-// drift, exactly as for any agent without a captured baseline).
+// When tlOK the badge is authoritative for status + firstSeen + attestations +
+// host/version; the feed supplies name + description + endpoints. This matches
+// snapshot.merge's precedence and lets a lifecycle state the feed can't express
+// (e.g. EXPIRED) reach the fixture. When !tlOK the fold supplies everything and
+// attestations are empty (prober emits non-matching drift, exactly as for any
+// agent without a captured baseline).
 func toEvent(fa foldedAgent, badge tlevent.Event, tlOK bool) tlevent.Event {
 	name := fa.DisplayName
 	if name == "" {
@@ -145,6 +164,9 @@ func toEvent(fa foldedAgent, badge tlevent.Event, tlOK bool) tlevent.Event {
 		},
 	}
 	if tlOK {
+		if badge.Status != "" {
+			ev.Status = badge.Status
+		}
 		ev.FirstSeen = badge.FirstSeen
 		ev.Attestations = badge.Attestations
 		if badge.Agent.Host != "" {

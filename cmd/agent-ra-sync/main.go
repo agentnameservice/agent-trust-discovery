@@ -71,9 +71,17 @@ func run(args []string, stderr io.Writer) int {
 	ctx, cancel := context.WithTimeout(context.Background(), runTimeout)
 	defer cancel()
 
-	if _, err := rasync.Run(ctx, raclient.New(httpClient), tlclient.New(httpClient), cfg, logger); err != nil {
+	sum, err := rasync.Run(ctx, raclient.New(httpClient), tlclient.New(httpClient), cfg, logger)
+	if err != nil {
 		logger.ErrorContext(ctx, "rasync: run failed", "error", err)
 		return 1
+	}
+	// rasync.Run degrades a TL badge miss to a feed-only fixture rather than
+	// aborting, so a partial capture returns nil. Surface that here — the exit
+	// code alone can't distinguish a clean run from a degraded one.
+	if sum.TLFetchErrors > 0 {
+		logger.WarnContext(ctx, "rasync: capture degraded", "tlFetchErrors", sum.TLFetchErrors,
+			"agentsCaptured", sum.AgentsCaptured)
 	}
 	return 0
 }

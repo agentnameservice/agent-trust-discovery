@@ -53,7 +53,6 @@ type EventItem struct {
 	LogID            string     `json:"logId"`
 	EventType        string     `json:"eventType"`
 	CreatedAt        string     `json:"createdAt"`
-	ExpiresAt        string     `json:"expiresAt,omitempty"`
 	AgentID          string     `json:"agentId"`
 	AnsName          string     `json:"ansName"`
 	AgentHost        string     `json:"agentHost"`

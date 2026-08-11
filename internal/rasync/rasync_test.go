@@ -2,6 +2,7 @@ package rasync
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"os"
@@ -72,6 +73,29 @@ func TestToEvent_FeedOnlyFallbackWhenNoBadge(t *testing.T) {
 	}
 }
 
+func TestToEvent_BadgeStatusWins(t *testing.T) {
+	// The badge is authoritative for lifecycle status: an agent the feed folds
+	// to ACTIVE but whose badge says EXPIRED must be written EXPIRED. The feed
+	// can't express expiry at all, so without this the two capture tools would
+	// disagree about the same agent (snapshot.merge lets TL status win).
+	fa := foldedAgent{
+		AgentID: "a1", Host: "x", Version: "v1.0.0", DisplayName: "X",
+		Status: "ACTIVE", FirstSeenFallback: "2020-01-01T00:00:00Z", LastUpdated: "2026-02-01T00:00:00Z",
+	}
+	badge := tlevent.Event{
+		Status: "EXPIRED", FirstSeen: "2025-05-05T00:00:00Z", LastUpdated: "2025-05-05T00:00:00Z",
+		Agent: tlevent.Agent{Host: "x", Version: "v1.0.0", Name: "X"},
+	}
+	if ev := toEvent(fa, badge, true); ev.Status != "EXPIRED" {
+		t.Errorf("Status = %q, want EXPIRED (badge authoritative)", ev.Status)
+	}
+	// When the badge carries no status, the fold's status is kept.
+	badge.Status = ""
+	if ev := toEvent(fa, badge, true); ev.Status != "ACTIVE" {
+		t.Errorf("Status = %q, want ACTIVE (fold status kept when badge empty)", ev.Status)
+	}
+}
+
 // fakeTL returns a canned badge, or an error for ansIDs in failFor.
 type fakeTL struct {
 	byID    map[string]tlevent.Event
@@ -83,6 +107,13 @@ func (f fakeTL) Fetch(_ context.Context, _, ansID string) (tlevent.Event, error)
 		return tlevent.Event{}, os.ErrDeadlineExceeded
 	}
 	return f.byID[ansID], nil
+}
+
+// errTL fails every fetch with a fixed error, to exercise the ctx-abort path.
+type errTL struct{ err error }
+
+func (e errTL) Fetch(_ context.Context, _, _ string) (tlevent.Event, error) {
+	return tlevent.Event{}, e.err
 }
 
 func TestRun_WritesParseableFixtures(t *testing.T) {
@@ -171,5 +202,49 @@ func TestRun_RefusesEmptyFeed(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := Run(context.Background(), feed, fakeTL{}, Config{RABaseURL: "http://ra", TLBaseURL: "http://tl", OutDir: dir, PageSize: 100}, nil); err == nil {
 		t.Fatal("expected error refusing to write an empty fixture set")
+	}
+}
+
+func TestRun_AbortsOnContextDeadline(t *testing.T) {
+	// A cancelled or timed-out context mid-loop must abort the run, not silently
+	// degrade the remaining agents to feed-only fixtures under a nil error.
+	feed := &fakeFeed{pages: []raclient.EventPage{
+		{Items: []raclient.EventItem{
+			{LogID: "1", EventType: "AGENT_REGISTERED", CreatedAt: "2026-01-01T00:00:00Z",
+				AgentID: "a1", AgentHost: "x", Version: "v1.0.0", AgentDisplayName: "X"},
+		}, LastLogID: "1"},
+	}}
+	dir := t.TempDir()
+	_, err := Run(context.Background(), feed, errTL{err: context.DeadlineExceeded},
+		Config{RABaseURL: "http://ra", TLBaseURL: "http://tl", OutDir: dir, PageSize: 100},
+		slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if err == nil {
+		t.Fatal("expected abort error when a TL fetch hits the context deadline")
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("error should wrap context.DeadlineExceeded, got: %v", err)
+	}
+}
+
+func TestRun_RefusesAllDegraded(t *testing.T) {
+	// A non-context TL failure for EVERY agent degrades all to feed-only, which
+	// still increments AgentsCaptured — so the empty-snapshot guard can't catch
+	// it. The all-failed guard must refuse rather than replace real baselines
+	// with an attestation-free set under a nil error.
+	feed := &fakeFeed{pages: []raclient.EventPage{
+		{Items: []raclient.EventItem{
+			{LogID: "1", EventType: "AGENT_REGISTERED", CreatedAt: "2026-01-01T00:00:00Z",
+				AgentID: "a1", AgentHost: "x", Version: "v1.0.0", AgentDisplayName: "X"},
+			{LogID: "2", EventType: "AGENT_REGISTERED", CreatedAt: "2026-01-01T00:00:00Z",
+				AgentID: "a2", AgentHost: "y", Version: "v1.0.0", AgentDisplayName: "Y"},
+		}, LastLogID: "2"},
+	}}
+	tl := fakeTL{failFor: map[string]bool{"a1": true, "a2": true}}
+	dir := t.TempDir()
+	_, err := Run(context.Background(), feed, tl,
+		Config{RABaseURL: "http://ra", TLBaseURL: "http://tl", OutDir: dir, PageSize: 100},
+		slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if err == nil {
+		t.Fatal("expected refusal when every TL fetch fails (all-degraded capture)")
 	}
 }
