@@ -14,6 +14,7 @@ import (
 	"github.com/agentnameservice/agent-trust-discovery/internal/scoring/engine"
 	"github.com/agentnameservice/agent-trust-discovery/internal/scoring/registry"
 	"github.com/agentnameservice/agent-trust-discovery/internal/scoring/signals"
+	"github.com/agentnameservice/agent-trust-discovery/internal/scoring/signals/trustmodel"
 	"github.com/agentnameservice/agent-trust-discovery/internal/search"
 )
 
@@ -46,6 +47,14 @@ func Build(ctx context.Context, cfg config.Config, profileDefaultPath, profileDi
 	for _, s := range signals.BuiltIns(nil) {
 		if err := reg.Register(s); err != nil {
 			return nil, nil, fmt.Errorf("server: register signal: %w", err)
+		}
+	}
+	// TrustModel Trust Index signals fill the solvency/behavior/safety
+	// dimensions (empty in v1). Fed by the TrustModel hydrator via the import
+	// contract. See config/profiles/trustmodel.yaml.
+	for _, s := range trustmodel.Signals() {
+		if err := reg.Register(s); err != nil {
+			return nil, nil, fmt.Errorf("server: register trustmodel signal: %w", err)
 		}
 	}
 
