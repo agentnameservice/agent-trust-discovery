@@ -1,6 +1,7 @@
 package trustmodel
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -79,7 +80,7 @@ func TestEvaluateScoreAndBackstop(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			r, err := c.sig.Evaluate(nil, domain.Agent{}, c.obs)
+			r, err := c.sig.Evaluate(context.TODO(), domain.Agent{}, c.obs)
 			if err != nil {
 				t.Fatalf("unexpected err: %v", err)
 			}
@@ -100,7 +101,7 @@ func TestEvaluateScoreAndBackstop(t *testing.T) {
 func TestProviderRiskCodesPassThroughAndPrefixFilter(t *testing.T) {
 	// Matching-prefix provider code is kept; a wrong-dimension code is dropped;
 	// the backstop is appended below threshold; explanation is surfaced.
-	r, err := safety().Evaluate(nil, domain.Agent{},
+	r, err := safety().Evaluate(context.TODO(), domain.Agent{},
 		obs(`{"score":30,"riskCodes":["SAFETY_PROMPT_INJECTION","BEHAVIOR_STALE"],"explanation":"jailbreak on 2/40 probes"}`))
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
@@ -143,7 +144,7 @@ func TestValidate(t *testing.T) {
 func TestThresholdConfigurable(t *testing.T) {
 	// The "magic 70" is now a per-signal config value.
 	strict := New("trustmodel.safety.score", domain.DimensionSafety, 90)
-	r, _ := strict.Evaluate(nil, domain.Agent{}, obs(`{"score":85}`))
+	r, _ := strict.Evaluate(context.TODO(), domain.Agent{}, obs(`{"score":85}`))
 	if !contains(r.RiskCodes, "SAFETY_TRUSTMODEL_SCORE_LOW") {
 		t.Errorf("threshold 90: score 85 should trip backstop, got %v", r.RiskCodes)
 	}
