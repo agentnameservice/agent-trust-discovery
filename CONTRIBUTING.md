@@ -124,7 +124,8 @@ patches:
   the higher the probability that somebody will take a quick look at it.
 
 **Note that anyone is welcome to review and give feedback on a change, but only
-people with commit access to the repository can approve it.**
+maintainers can approve it.** See [GOVERNANCE.md](./GOVERNANCE.md) for the
+project's roles and how maintainers are added.
 
 ## Attribution of Changes
 

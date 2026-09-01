@@ -1,0 +1,18 @@
+# Code Owners for agent-trust-discovery — see GOVERNANCE.md.
+# The LAST matching pattern wins, so the core-path rules below override the
+# repo-wide default: an external maintainer can clear review on general files,
+# but core changes still require an internal steward's approval.
+
+# Repo-wide: any maintainer (including external) may satisfy code-owner review.
+*                  @agentnameservice/agent-trust-discovery-maintainers
+
+# Core — scoring engine, signal contract, and spec stay with the stewards.
+/internal/scoring/ @csnitker-godaddy @kperry-godaddy @chou-godaddy @cyen-godaddy
+/internal/port/    @csnitker-godaddy @kperry-godaddy @chou-godaddy @cyen-godaddy
+/spec/             @csnitker-godaddy @kperry-godaddy @chou-godaddy @cyen-godaddy
+
+# Governance, policy, and CI configuration.
+/GOVERNANCE.md     @csnitker-godaddy @kperry-godaddy @chou-godaddy @cyen-godaddy
+/CONTRIBUTING.md   @csnitker-godaddy @kperry-godaddy @chou-godaddy @cyen-godaddy
+/SECURITY.md       @csnitker-godaddy @kperry-godaddy @chou-godaddy @cyen-godaddy
+/.github/          @csnitker-godaddy @kperry-godaddy @chou-godaddy @cyen-godaddy
