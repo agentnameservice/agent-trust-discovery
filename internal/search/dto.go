@@ -79,11 +79,21 @@ type trustVectorDTO struct {
 }
 
 type signalScoreDTO struct {
-	SignalID    string  `json:"signalId"`
-	RawScore    int     `json:"rawScore"`
-	Weight      float64 `json:"weight"`
-	Attestation string  `json:"attestation"`
-	Explanation string  `json:"explanation"`
+	SignalID    string         `json:"signalId"`
+	RawScore    int            `json:"rawScore"`
+	Weight      float64        `json:"weight"`
+	Attestation string         `json:"attestation"`
+	Explanation string         `json:"explanation"`
+	Provenance  *provenanceDTO `json:"provenance,omitempty"`
+}
+
+// provenanceDTO surfaces the evidence behind a signal score — the producing AIM
+// and a URL to its published finding — so a relying party can trace the score to
+// its source rather than take it on trust. Omitted when the observation carried
+// no provenance (or none was recorded). Mirrors the import-side provenance shape.
+type provenanceDTO struct {
+	AIMID       string `json:"aimId"`
+	EvidenceURL string `json:"evidenceUrl,omitempty"`
 }
 
 type dimensionScoreDTO struct {
@@ -116,12 +126,20 @@ func newTrustEvaluationDTO(e domain.TrustEvaluation) trustEvaluationDTO {
 	for _, d := range e.Dimensions {
 		scores := make([]signalScoreDTO, 0, len(d.SignalScores))
 		for _, s := range d.SignalScores {
+			var prov *provenanceDTO
+			if s.Provenance != nil {
+				prov = &provenanceDTO{
+					AIMID:       s.Provenance.AIMID,
+					EvidenceURL: s.Provenance.EvidenceURL,
+				}
+			}
 			scores = append(scores, signalScoreDTO{
 				SignalID:    string(s.SignalID),
 				RawScore:    s.RawScore,
 				Weight:      s.Weight,
 				Attestation: string(s.Attestation),
 				Explanation: s.Explanation,
+				Provenance:  prov,
 			})
 		}
 		dims = append(dims, dimensionScoreDTO{
