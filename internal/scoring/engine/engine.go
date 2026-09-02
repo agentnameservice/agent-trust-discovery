@@ -49,6 +49,7 @@ func New(store ObservationReader, reg port.SignalRegistry, thresholds Thresholds
 // cache; design §3.1 #3).
 func (e *Engine) Evaluate(ctx context.Context, agent domain.Agent, profile domain.ScoringProfile) (domain.TrustEvaluation, error) {
 	byDimension := make(map[domain.Dimension][]domain.SignalScore)
+	capsByDimension := make(map[domain.Dimension][]int)
 	var allRisks []string
 
 	log := ctxlog.From(ctx)
@@ -108,9 +109,16 @@ func (e *Engine) Evaluate(ctx context.Context, agent domain.Agent, profile domai
 			Explanation: res.Explanation,
 			Attestation: res.Attestation,
 		})
-		// An inactive signal (weight 0) contributes neither score nor risk (§4.2).
+		// An inactive signal (weight 0) contributes neither score nor risk (§4.2),
+		// and likewise cannot gate — disabling a gating signal by zeroing its
+		// weight disables its cap too.
 		if weight > 0 {
 			allRisks = append(allRisks, res.RiskCodes...)
+			// A gating signal caps its dimension (issue #13(b)). Clamp the cap to
+			// [0,100] like Raw, so a third-party signal can't cap out of range.
+			if res.DimensionCap != nil {
+				capsByDimension[dim] = append(capsByDimension[dim], clampRaw(*res.DimensionCap))
+			}
 		}
 	}
 
@@ -120,6 +128,18 @@ func (e *Engine) Evaluate(ctx context.Context, agent domain.Agent, profile domai
 	for _, dim := range domain.AllDimensions() {
 		signalScores := byDimension[dim]
 		score := weightedAverage(signalScores)
+		// Gating (issue #13(b)): a dimension score is capped by the lowest cap any
+		// of its gating signals returned. This composes with the absent-observation
+		// policy above — an absent, non-informative gating signal was skipped
+		// before Evaluate, so it produced no cap; only a present gating signal
+		// caps. A capped dimension stays active (it has weighted signals), so a
+		// blocked agent classifies on the capped score rather than an average that
+		// dilutes the block.
+		if caps := capsByDimension[dim]; len(caps) > 0 {
+			if c := minInt(caps); c < score {
+				score = c
+			}
+		}
 		scores[dim] = score
 		dims = append(dims, domain.DimensionScore{Dimension: dim, Score: score, SignalScores: signalScores})
 		active[dim] = profile.DimensionWeights[dim] > 0 && hasWeightedSignal(signalScores)
@@ -172,6 +192,17 @@ func clampRaw(raw int) int {
 	default:
 		return raw
 	}
+}
+
+// minInt returns the smallest of a non-empty slice of ints.
+func minInt(xs []int) int {
+	m := xs[0]
+	for _, x := range xs[1:] {
+		if x < m {
+			m = x
+		}
+	}
+	return m
 }
 
 func hasWeightedSignal(scores []domain.SignalScore) bool {

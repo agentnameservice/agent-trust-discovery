@@ -18,6 +18,19 @@ type SignalResult struct {
 	Explanation string             // human-readable, surfaced in the API response
 	Attestation domain.Attestation // tier of the evidence backing this score
 	RiskCodes   []string           // zero or more spec-§7.3 risk codes
+	// DimensionCap, when non-nil, caps this signal's dimension score at the given
+	// value no matter how the other signals in the dimension score — the signal
+	// GATES the dimension rather than contributing a term to its average. nil
+	// (the default) means a normal term, so existing signals are unaffected.
+	//
+	// A hard stop (a sanctions/compliance block, a safety hard-fail) returns
+	// Raw:0 with DimensionCap:0, so "blocked" is a verdict rather than a 0 that
+	// averages up to a passing score against co-registered signals. The engine
+	// applies score = min(weightedAverage, min(caps)) over a dimension's gating
+	// signals; caps only pull a dimension DOWN (there is no floor in v1, where
+	// the real cases all lower the score and min composes cleanly). Only a
+	// weighted (active) signal's cap applies, matching risk-code handling.
+	DimensionCap *int
 }
 
 // Signal is the plug-in contract (design §4.1). Implement it in any package,
