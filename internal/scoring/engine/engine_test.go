@@ -436,3 +436,95 @@ func TestAbsentInformativeSignalStillCountsZero(t *testing.T) {
 		t.Errorf("integrity = %d, want 40 (informative absence scores 0 and counts)", dim.Score)
 	}
 }
+
+// gateSpy is a Signal that can act as a gate: it returns a fixed Raw and an
+// optional DimensionCap, and declares whether its absence is informative so the
+// #14 interaction can be exercised.
+type gateSpy struct {
+	id                 domain.SignalID
+	dim                domain.Dimension
+	raw                int
+	cap                *int
+	absenceInformative bool
+}
+
+func (g gateSpy) ID() domain.SignalID          { return g.id }
+func (g gateSpy) Dimension() domain.Dimension  { return g.dim }
+func (gateSpy) Derived() bool                  { return false }
+func (gateSpy) Validate(json.RawMessage) error { return nil }
+func (g gateSpy) AbsenceInformative() bool     { return g.absenceInformative }
+func (g gateSpy) Evaluate(context.Context, domain.Agent, *domain.SignalObservation) (port.SignalResult, error) {
+	return port.SignalResult{Raw: g.raw, DimensionCap: g.cap}, nil
+}
+
+func capPtr(n int) *int { return &n }
+
+// evalSafety registers the given signals, evaluates one agent with safety
+// weighted, and returns the safety dimension score.
+func evalSafety(t *testing.T, store engine.ObservationReader, weights map[domain.SignalID]float64, sigs ...port.Signal) domain.DimensionScore {
+	t.Helper()
+	r := registry.New()
+	for _, s := range sigs {
+		if err := r.Register(s); err != nil {
+			t.Fatalf("register %s: %v", s.ID(), err)
+		}
+	}
+	eng := engine.New(store, r, engine.DefaultThresholds(), time.Now)
+	prof := domain.ScoringProfile{
+		Name:             "gate",
+		DimensionWeights: map[domain.Dimension]float64{domain.DimensionSafety: 1},
+		SignalWeights:    weights,
+	}
+	ev, err := eng.Evaluate(context.Background(), domain.Agent{ID: "a"}, prof)
+	if err != nil {
+		t.Fatalf("Evaluate: %v", err)
+	}
+	return findDim(t, ev, domain.DimensionSafety)
+}
+
+// A gating signal caps its dimension: a hard block (Raw 0, cap 0) beside a
+// signal scoring 100 yields 0, not the 50 the average would give — blocked is a
+// verdict, not a term (issue #13(b)).
+func TestEvaluateGatingCapsDimension(t *testing.T) {
+	gate := gateSpy{id: "gate", dim: domain.DimensionSafety, raw: 0, cap: capPtr(0), absenceInformative: true}
+	good := gateSpy{id: "good", dim: domain.DimensionSafety, raw: 100, absenceInformative: true}
+	dim := evalSafety(t, fakeStore{}, map[domain.SignalID]float64{"gate": 1, "good": 1}, gate, good)
+	if dim.Score != 0 {
+		t.Errorf("gated safety score = %d, want 0 (cap beats the 50 average)", dim.Score)
+	}
+}
+
+// The cap composes with the absent-observation policy (#14): an absent,
+// non-informative gating signal is skipped before Evaluate, so it produces no
+// cap — only a present gate caps. Here the block never fires because it has no
+// observation, and the co-signal's 100 stands uncapped.
+func TestEvaluateGatingCapComposesWithAbsence(t *testing.T) {
+	absentGate := gateSpy{id: "gate", dim: domain.DimensionSafety, raw: 0, cap: capPtr(0), absenceInformative: false}
+	good := gateSpy{id: "good", dim: domain.DimensionSafety, raw: 100, absenceInformative: true}
+	// fakeStore has no observation for either signal.
+	dim := evalSafety(t, fakeStore{}, map[domain.SignalID]float64{"gate": 1, "good": 1}, absentGate, good)
+	if dim.Score != 100 {
+		t.Errorf("absent gate should not cap: score = %d, want 100", dim.Score)
+	}
+}
+
+// A weight-0 (inactive) gating signal does not cap — zeroing its weight disables
+// the gate, consistent with risk-code handling.
+func TestEvaluateWeightZeroGateDoesNotCap(t *testing.T) {
+	gate := gateSpy{id: "gate", dim: domain.DimensionSafety, raw: 0, cap: capPtr(0), absenceInformative: true}
+	good := gateSpy{id: "good", dim: domain.DimensionSafety, raw: 100, absenceInformative: true}
+	dim := evalSafety(t, fakeStore{}, map[domain.SignalID]float64{"gate": 0, "good": 1}, gate, good)
+	if dim.Score != 100 {
+		t.Errorf("weight-0 gate should not cap: score = %d, want 100", dim.Score)
+	}
+}
+
+// A cap above the weighted average is a no-op: caps only pull a dimension down.
+func TestEvaluateGatingCapOnlyLowers(t *testing.T) {
+	gate := gateSpy{id: "gate", dim: domain.DimensionSafety, raw: 60, cap: capPtr(80), absenceInformative: true}
+	good := gateSpy{id: "good", dim: domain.DimensionSafety, raw: 40, absenceInformative: true}
+	dim := evalSafety(t, fakeStore{}, map[domain.SignalID]float64{"gate": 1, "good": 1}, gate, good)
+	if dim.Score != 50 {
+		t.Errorf("cap above average should be a no-op: score = %d, want 50", dim.Score)
+	}
+}
