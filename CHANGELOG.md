@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.3](https://github.com/agentnameservice/agent-trust-discovery/compare/v0.1.2...v0.1.3) (2026-09-04)
+
+
+### Features
+
+* import RA agent-events feed into trust index pipeline ([#8](https://github.com/agentnameservice/agent-trust-discovery/issues/8)) ([ea5b30f](https://github.com/agentnameservice/agent-trust-discovery/commit/ea5b30f3eca4a721a24f124c1df45204ff7a37da))
+
+
+### Documentation
+
+* adopt DCO and AI-disclosure contribution policy ([#7](https://github.com/agentnameservice/agent-trust-discovery/issues/7)) ([6ec1034](https://github.com/agentnameservice/agent-trust-discovery/commit/6ec1034d6ce50b44650ef6df0f5c594d7b55fe87))
+
 ## [0.1.2](https://github.com/agentnameservice/agent-trust-discovery/compare/v0.1.1...v0.1.2) (2026-07-14)
 
 
