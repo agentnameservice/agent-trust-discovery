@@ -1,0 +1,32 @@
+# TrustModel Trust Index profile for agent-trust-discovery (OPT-IN EXAMPLE).
+#
+# This lives under config/examples/ so it is NOT auto-loaded — the repo does not
+# ship a vendor profile as always-on. To use it, copy this file into
+# config/profiles/ (every *.yaml there is loaded and selectable via ?profile=),
+# or copy its weights into your own profile.
+#
+# Extends the shipped default-profile.yaml by activating the three dimensions
+# ANS leaves empty in v1 (solvency, behavior, safety) and weighting the
+# TrustModel signals that fill them. dimensionWeights in v1 are an on/off gate
+# (0 or 1); magnitude is inert (design §4.5).
+name: trustmodel
+dimensionWeights:
+  integrity: 1.0   # ANS built-ins
+  identity:  1.0   # ANS built-ins
+  solvency:  1.0   # ACTIVATED — filled by TrustModel
+  behavior:  1.0   # ACTIVATED — filled by TrustModel
+  safety:    1.0   # ACTIVATED — filled by TrustModel
+signalWeights:
+  # ── ANS built-ins (unchanged) ──
+  certtype:                 1.0
+  dnssecurity:              1.0
+  agentage:                 1.0
+  versionstability:         1.0
+  certfingerprint.server:   1.0
+  certfingerprint.identity: 1.0
+  dnsrecord.ans:            1.0
+  dnsrecord.ans-badge:      1.0
+  # ── TrustModel Trust Index signals (vendor.dimension.name) ──
+  trustmodel.behavior.score:  1.0   # behavior
+  trustmodel.safety.score:    1.0   # safety
+  trustmodel.solvency.score:  1.0   # solvency
