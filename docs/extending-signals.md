@@ -228,6 +228,13 @@ term. Notes:
   before `Evaluate`, so it produces no cap — only a *present* gate caps. A gate
   and the absence policy never fight: absent means "not participating," present
   means "cap applies."
+- **Handle your own errors — a returned `error` loses the cap.** When `Evaluate`
+  returns an `error`, the engine degrades that signal to a capless `Raw:0` *term*
+  (plus `SIGNAL_EVALUATION_FAILED`), so a gate that errors stops gating and just
+  averages back in — a hard stop can silently become a mediocre score. If a
+  backend/lookup your gate depends on fails, decide inside `Evaluate` whether that
+  failure should block: to keep gating, return the `DimensionCap` with a risk code
+  rather than returning `err`.
 
 ## What you do not do
 
