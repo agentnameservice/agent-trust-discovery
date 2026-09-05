@@ -445,6 +445,7 @@ type gateSpy struct {
 	dim                domain.Dimension
 	raw                int
 	cap                *int
+	evalErr            error
 	absenceInformative bool
 }
 
@@ -454,7 +455,31 @@ func (gateSpy) Derived() bool                  { return false }
 func (gateSpy) Validate(json.RawMessage) error { return nil }
 func (g gateSpy) AbsenceInformative() bool     { return g.absenceInformative }
 func (g gateSpy) Evaluate(context.Context, domain.Agent, *domain.SignalObservation) (port.SignalResult, error) {
+	if g.evalErr != nil {
+		return port.SignalResult{}, g.evalErr
+	}
 	return port.SignalResult{Raw: g.raw, DimensionCap: g.cap}, nil
+}
+
+// A gate whose Evaluate ERRORS loses its cap. The engine never sees the
+// DimensionCap a failed call would have returned, so issue #21's degrade path
+// turns the gate into a capless Raw=0 term (plus SIGNAL_EVALUATION_FAILED) and
+// the dimension AVERAGES instead of gating: safety reads 50 here, not 0, even
+// though the co-signal is a passing 100. Pins the contract from the #21 review —
+// an author of a hard stop must catch errors inside Evaluate and return the cap
+// with a risk code, never return err.
+func TestGateEvaluationErrorDegradesToTermNotCap(t *testing.T) {
+	gate := gateSpy{id: "compliance.screen", dim: domain.DimensionSafety, cap: capPtr(0), evalErr: errors.New("gate backend unavailable"), absenceInformative: true}
+	good := gateSpy{id: "safety.ok", dim: domain.DimensionSafety, raw: 100, absenceInformative: true}
+	dim := evalSafety(t, fakeStore{}, map[domain.SignalID]float64{"compliance.screen": 1, "safety.ok": 1}, gate, good)
+	if dim.Score != 50 {
+		t.Errorf("errored gate score = %d, want 50 (degraded to a capless term, avg of 0 and 100); a 0 would mean the cap wrongly survived an eval error", dim.Score)
+	}
+	for _, s := range dim.SignalScores {
+		if s.SignalID == "compliance.screen" && s.RawScore != 0 {
+			t.Errorf("errored gate raw = %d, want 0 (degraded)", s.RawScore)
+		}
+	}
 }
 
 func capPtr(n int) *int { return &n }
