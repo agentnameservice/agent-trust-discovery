@@ -165,6 +165,36 @@ are set, `uptime` displays its score for transparency without affecting
 classification. This lets you roll a new dimension out observably before it
 gates trust decisions.
 
+## Is a missing observation informative? (`AbsenceAware`)
+
+By default, a signal with a profile weight but no observation for an agent
+scores `0` at full weight and counts toward its dimension. For the integrity
+built-ins that is correct — they are computable from public DNS and certificates
+at zero marginal cost, so a *missing* observation (no DNSSEC record) is itself
+meaningful.
+
+For a **provider-fed** signal it usually is not. Absence in `solvency`,
+`behavior`, or `safety` means "no provider has covered this agent yet", which
+says nothing about the agent — and scoring it `0` penalizes the agent for a
+coverage gap, so adding any provider becomes a global downgrade for every agent
+it has not seen (issue #13).
+
+Opt out by implementing the optional interface:
+
+```go
+// AbsenceInformative reports false when a missing observation carries no
+// information about the agent. The engine then EXCLUDES this signal from the
+// dimension roll-up for agents it has no observation for, instead of scoring 0.
+func (s MySignal) AbsenceInformative() bool { return false }
+```
+
+Signals that do not implement it, or return `true`, keep the default
+absence-scores-zero behavior. A dimension whose every signal is absent-excluded
+carries no signal scores and stays inactive (unknown) rather than a misleading
+active-`0`. This decides whether your signal is a *term* in the average or is
+simply *not present* when you have no data on an agent; it does not change how a
+present observation scores.
+
 ## Config-driven registration (a provider score signal, no Go code)
 
 Steps 1–2 above compile a custom signal into the binary. A provider that just
@@ -214,4 +244,6 @@ boot error, not a silent no-op, so a misresolved path fails loudly.
 - No code generation, no `plugin` loading.
 - No separate value-schema registry — `Validate` is the schema.
 - No engine changes to add a signal — code-registered signals go through the
-  registry, and provider score signals come from config (both discovered at boot).
+  registry, and provider score signals come from config (both discovered at
+  boot). (The absence semantics above are an existing engine capability a
+  signal opts into, not a per-signal engine change.)

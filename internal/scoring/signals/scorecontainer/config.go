@@ -88,15 +88,17 @@ func LoadSignals(path string) ([]port.Signal, error) {
 		if !dim.Valid() {
 			return nil, fmt.Errorf("score-signals: %s (%s): unknown dimension %q", where, e.ID, e.Dimension)
 		}
-		// vendor.dimension.name, with the dimension segment matching Dimension()
-		// so a config typo can't register a signal into the wrong dimension.
-		parts := strings.Split(e.ID, ".")
-		if len(parts) != 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
+		// vendor.dimension.name, with the dimension segment matching Dimension().
+		// dimension and name are single tokens by construction, so they're peeled
+		// off from the right; everything before them is the vendor, even if the
+		// vendor itself contains dots (e.g. a did:web authority).
+		dimSeg, ok := dimensionSegment(e.ID)
+		if !ok {
 			return nil, fmt.Errorf("score-signals: %s: id %q must be vendor.dimension.name", where, e.ID)
 		}
-		if parts[1] != e.Dimension {
+		if dimSeg != e.Dimension {
 			return nil, fmt.Errorf("score-signals: %s: id %q dimension segment %q must match dimension %q",
-				where, e.ID, parts[1], e.Dimension)
+				where, e.ID, dimSeg, e.Dimension)
 		}
 		if e.Threshold != nil && (*e.Threshold < 0 || *e.Threshold > 100) {
 			return nil, fmt.Errorf("score-signals: %s (%s): threshold must be in [0,100], got %d", where, e.ID, *e.Threshold)
@@ -108,4 +110,27 @@ func LoadSignals(path string) ([]port.Signal, error) {
 		out = append(out, NewWithSubject(domain.SignalID(e.ID), dim, e.Subject, e.Threshold))
 	}
 	return out, nil
+}
+
+// dimensionSegment returns the dimension segment of a vendor.dimension.name id
+// by peeling name and dimension off the right, so a vendor segment containing
+// dots of its own (e.g. a did:web authority like "did:web:example.com") does
+// not defeat the format check the way a plain 3-part strings.Split would.
+// ok is false unless the id has at least two dots and all three resulting
+// segments (vendor, dimension, name) are non-empty.
+func dimensionSegment(id string) (string, bool) {
+	i := strings.LastIndexByte(id, '.')
+	if i < 0 {
+		return "", false
+	}
+	name, rest := id[i+1:], id[:i]
+	j := strings.LastIndexByte(rest, '.')
+	if j < 0 {
+		return "", false
+	}
+	dim, vendor := rest[j+1:], rest[:j]
+	if vendor == "" || dim == "" || name == "" {
+		return "", false
+	}
+	return dim, true
 }

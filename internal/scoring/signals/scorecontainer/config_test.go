@@ -131,6 +131,34 @@ signals:
 	}
 }
 
+// A vendor segment may itself contain dots — e.g. a did:web authority, which
+// the doc comment in the example config explicitly suggests as a vendor value,
+// or a bare domain — so the format check must peel dimension.name off the right
+// rather than require exactly three dot-separated parts. Both forms below were
+// rejected before the fix.
+func TestLoadSignals_DottedVendor(t *testing.T) {
+	for _, id := range []string{
+		"did:web:example.com.solvency.score", // did:web authority as vendor
+		"dnsofmoney.com.solvency.score",      // bare domain as vendor
+	} {
+		t.Run(id, func(t *testing.T) {
+			sigs, err := LoadSignals(writeCfg(t, "signals:\n  - id: "+id+"\n    dimension: solvency\n"))
+			if err != nil {
+				t.Fatalf("LoadSignals: %v", err)
+			}
+			if len(sigs) != 1 {
+				t.Fatalf("want 1 signal, got %d", len(sigs))
+			}
+			if got := sigs[0].ID(); string(got) != id {
+				t.Errorf("ID() = %q, want %q", got, id)
+			}
+			if got := sigs[0].Dimension(); got != domain.DimensionSolvency {
+				t.Errorf("Dimension() = %q", got)
+			}
+		})
+	}
+}
+
 func TestLoadSignals_Rejections(t *testing.T) {
 	cases := map[string]string{
 		"unknown dimension":      "signals:\n  - id: x.bogus.score\n    dimension: bogus\n",

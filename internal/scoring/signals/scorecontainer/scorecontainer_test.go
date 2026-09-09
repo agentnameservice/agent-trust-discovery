@@ -140,6 +140,26 @@ func TestHyphenatedVendorSanitized(t *testing.T) {
 	}
 }
 
+// A vendor segment may itself contain dots — a did:web authority, or a bare
+// domain used as a vendor token — and must still be recognised as ONE vendor
+// segment rather than being truncated at its first dot, and normalised whole
+// into the backstop code.
+func TestDottedVendorSanitized(t *testing.T) {
+	s := New("did:web:example.com.safety.score", domain.DimensionSafety, ptr(70))
+	if got := s.vendor; got != "DID_WEB_EXAMPLE_COM" {
+		t.Fatalf("vendor = %q, want DID_WEB_EXAMPLE_COM", got)
+	}
+	r, _ := s.Evaluate(context.TODO(), domain.Agent{}, obs(`{"score":10}`))
+	if !contains(r.RiskCodes, "SAFETY_DID_WEB_EXAMPLE_COM_SCORE_LOW") {
+		t.Errorf("dotted vendor not kept whole: %v", r.RiskCodes)
+	}
+	for _, c := range r.RiskCodes {
+		if !riskCodeRe.MatchString(c) {
+			t.Errorf("emitted code %q does not match %s", c, riskCodeRe.String())
+		}
+	}
+}
+
 func TestValidate(t *testing.T) {
 	s := New("trustmodel.behavior.score", domain.DimensionBehavior, nil)
 	if err := s.Validate(json.RawMessage(`{"score":50}`)); err != nil {
