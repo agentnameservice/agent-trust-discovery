@@ -1,0 +1,36 @@
+# Config-driven provider-signal registration for agent-trust-discovery.
+#
+# Each entry materializes a generic scorecontainer signal, so a provider
+# registers a dimension score with a config entry + a hydrator and NO Go code
+# (the prometheus-exporter model). Point config.yaml at this file:
+#
+#   signals:
+#     path: config/score-signals.yaml
+#
+# A relative path here is resolved against the config file's directory. The
+# provider's hydrator then POSTs observations of the shape
+# {score, riskCodes, explanation} to /v1/internal/observations/import for the id
+# below, and rides its evidence on the observation's provenance envelope.
+#
+# NOTE: the ids below use a PLACEHOLDER vendor ("acme") on purpose. Replace it
+# with your own vendor segment (e.g. your did:web authority). Do not copy an id
+# that a build already compiles in as a built-in signal — registration rejects a
+# duplicate id at boot.
+signals:
+  # id follows vendor.dimension.name; the dimension segment must match dimension.
+  - id: acme.safety.score
+    dimension: safety
+    threshold: 70          # omit for the default (70); 0 disables the low-score backstop
+  - id: acme.behavior.score
+    dimension: behavior
+  # A second provider registers beside the first with zero core changes:
+  - id: agentgraph.safety.score
+    dimension: safety
+    threshold: 70
+    subject: tool          # this score is about the tool/MCP server, not the agent
+  # subject defaults to "agent" when omitted; declare it (agent | tool | org | …)
+  # when a score is about a different entity, so an index never averages across
+  # subjects in the same dimension:
+  - id: acme.solvency.score
+    dimension: solvency
+    subject: org           # scores the controlling organization, not the agent

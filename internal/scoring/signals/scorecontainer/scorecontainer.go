@@ -148,13 +148,22 @@ func NewWithSubject(id domain.SignalID, dim domain.Dimension, subject string, th
 	return ScoreSignal{id: id, dimension: dim, vendor: vendor, subject: subject, threshold: t}
 }
 
-// vendorSegment returns the first dot-segment of a vendor.dimension.name id,
-// or the whole id if it carries no dot.
+// vendorSegment returns the vendor segment of a vendor.dimension.name id: the
+// id with its trailing ".dimension.name" removed, or the whole id if it
+// carries fewer than two dots. Peeling from the right (rather than splitting
+// on the first dot) means a vendor segment that itself contains dots — a
+// did:web authority, say — keeps its dots rather than being truncated at the
+// first one; sanitizeSegment normalises them afterward.
 func vendorSegment(id string) string {
-	if i := strings.IndexByte(id, '.'); i >= 0 {
-		return id[:i]
+	i := strings.LastIndexByte(id, '.')
+	if i < 0 {
+		return id
 	}
-	return id
+	rest := id[:i]
+	if j := strings.LastIndexByte(rest, '.'); j >= 0 {
+		return rest[:j]
+	}
+	return rest
 }
 
 // sanitizeSegment uppercases a segment and maps any character outside
