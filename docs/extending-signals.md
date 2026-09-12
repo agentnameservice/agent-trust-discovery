@@ -195,6 +195,47 @@ active-`0`. This decides whether your signal is a *term* in the average or is
 simply *not present* when you have no data on an agent; it does not change how a
 present observation scores.
 
+## Term or gate? (`DimensionCap`)
+
+By default a signal is a **term**: its `Raw` feeds the dimension's weighted
+average. That is wrong for a **gate** — a hard stop like a sanctions/compliance
+screen or a safety hard-fail. Averaged, a block scoring `0` beside one co-signal
+scoring `100` reads `50`, placing a blocked agent above a merely-mediocre one.
+The risk code survives, but the score says "pass."
+
+A gate returns a `DimensionCap` on its result to cap the dimension instead of
+contributing a term:
+
+```go
+zero := 0
+return port.SignalResult{
+    Raw:          0,
+    RiskCodes:    []string{"SAFETY_SANCTIONS_BLOCKED"},
+    DimensionCap: &zero, // cap the whole dimension at 0 — blocked is a verdict
+}, nil
+```
+
+The engine computes `score = min(weightedAverage, min(caps))` over the gating
+signals in the dimension. So the block above caps safety at `0` no matter how
+the other signals score. Leave `DimensionCap` nil (the default) to stay a normal
+term. Notes:
+
+- **Caps only pull down.** There is no floor in v1 — the real gates all lower a
+  score, and `min` composes cleanly across several gates.
+- **Only an active (weighted) gate caps.** Zeroing a gating signal's profile
+  weight disables its cap, the same as it drops its risk codes.
+- **Composes with `AbsenceAware`.** An absent, non-informative gate is skipped
+  before `Evaluate`, so it produces no cap — only a *present* gate caps. A gate
+  and the absence policy never fight: absent means "not participating," present
+  means "cap applies."
+- **Handle your own errors — a returned `error` loses the cap.** When `Evaluate`
+  returns an `error`, the engine degrades that signal to a capless `Raw:0` *term*
+  (plus `SIGNAL_EVALUATION_FAILED`), so a gate that errors stops gating and just
+  averages back in — a hard stop can silently become a mediocre score. If a
+  backend/lookup your gate depends on fails, decide inside `Evaluate` whether that
+  failure should block: to keep gating, return the `DimensionCap` with a risk code
+  rather than returning `err`.
+
 ## What you do not do
 
 - No code generation, no `plugin` loading.
