@@ -98,6 +98,15 @@ func (e *Engine) Evaluate(ctx context.Context, agent domain.Agent, profile domai
 				"agentId", agent.ID, "signalId", sig.ID(), "raw", res.Raw, "clamped", clamped)
 		}
 
+		// Carry the observation's provenance onto the score so it reaches the API
+		// response. nil when no observation was recorded, or when a recorded one
+		// carried none; the failure/degrade path above keeps whatever evidence was
+		// present rather than dropping it.
+		var prov *domain.Provenance
+		if obs != nil {
+			prov = obs.Provenance
+		}
+
 		weight := profile.SignalWeights[sig.ID()]
 		dim := sig.Dimension()
 		byDimension[dim] = append(byDimension[dim], domain.SignalScore{
@@ -107,6 +116,7 @@ func (e *Engine) Evaluate(ctx context.Context, agent domain.Agent, profile domai
 			Weight:      weight,
 			Explanation: res.Explanation,
 			Attestation: res.Attestation,
+			Provenance:  prov,
 		})
 		// An inactive signal (weight 0) contributes neither score nor risk (§4.2).
 		if weight > 0 {
