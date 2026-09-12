@@ -3,6 +3,7 @@ package importsvc
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/agentnameservice/agent-trust-discovery/internal/domain"
@@ -208,6 +209,9 @@ func (d observationDTO) toDomain() (domain.SignalObservation, error) {
 		if err := checkStrLen("provenance evidenceUrl", d.Provenance.EvidenceURL, maxProvenanceURLLen); err != nil {
 			return domain.SignalObservation{}, err
 		}
+		if err := checkEvidenceURL("provenance evidenceUrl", d.Provenance.EvidenceURL); err != nil {
+			return domain.SignalObservation{}, err
+		}
 		prov = &domain.Provenance{AIMID: d.Provenance.AIMID, EvidenceURL: d.Provenance.EvidenceURL}
 	}
 	return domain.SignalObservation{
@@ -225,6 +229,22 @@ func (d observationDTO) toDomain() (domain.SignalObservation, error) {
 func checkStrLen(label, s string, maxLen int) error {
 	if len(s) > maxLen {
 		return errInvalidRequest(fmt.Sprintf("%s is %d bytes, max %d", label, len(s), maxLen))
+	}
+	return nil
+}
+
+// checkEvidenceURL rejects a non-empty evidenceUrl that is not an absolute
+// http(s) URL. #18 surfaces provenance.evidenceUrl to relying parties, so a
+// value like "javascript:alert(1)", "file:///etc/passwd", or a bare
+// "not a url" must not reach a consumer that renders it as a link. Empty is
+// allowed (evidenceUrl is optional).
+func checkEvidenceURL(label, raw string) error {
+	if raw == "" {
+		return nil
+	}
+	u, err := url.Parse(raw)
+	if err != nil || !u.IsAbs() || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return errInvalidRequest(fmt.Sprintf("%s must be an absolute http(s) URL", label))
 	}
 	return nil
 }
