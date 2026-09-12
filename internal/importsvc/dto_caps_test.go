@@ -95,3 +95,47 @@ func TestObservationDTOToDomain_LengthCaps(t *testing.T) {
 		})
 	}
 }
+
+// TestObservationDTOToDomain_EvidenceURLScheme pins #18's URL validation: a
+// non-empty provenance.evidenceUrl must be an absolute http(s) URL so a
+// javascript:/file:/bare-string value can't reach a relying party that renders
+// it as a link. Empty stays allowed (evidenceUrl is optional).
+func TestObservationDTOToDomain_EvidenceURLScheme(t *testing.T) {
+	base := observationDTO{
+		AgentID: "a1", SignalID: "certtype",
+		ObservedAt: "2026-06-04T08:00:00Z",
+		Value:      json.RawMessage(`{"type":"DV"}`),
+	}
+
+	for _, raw := range []string{
+		"javascript:alert(1)",
+		"file:///etc/passwd",
+		"not a url at all",
+		"/relative/path",
+		"http:///no-host",
+		"ftp://example.com/x",
+	} {
+		t.Run("reject "+raw, func(t *testing.T) {
+			d := base
+			d.Provenance = &provenanceDTO{EvidenceURL: raw}
+			_, err := d.toDomain()
+			if err == nil || !strings.Contains(err.Error(), "evidenceUrl") {
+				t.Fatalf("evidenceUrl %q: want evidenceUrl error, got %v", raw, err)
+			}
+		})
+	}
+
+	for _, raw := range []string{
+		"",
+		"http://example.com",
+		"https://aim.example.com/findings/42",
+	} {
+		t.Run("accept "+raw, func(t *testing.T) {
+			d := base
+			d.Provenance = &provenanceDTO{AIMID: "did:web:aim.example.com", EvidenceURL: raw}
+			if _, err := d.toDomain(); err != nil {
+				t.Fatalf("evidenceUrl %q: want ok, got %v", raw, err)
+			}
+		})
+	}
+}

@@ -321,6 +321,9 @@ components:
             §3 attestation vocabulary; see the note on `Dimension`.
           enum: [unattested, tl_attested, card_attested]
         explanation: { type: string }
+        # Present when the underlying observation carried provenance; echoed
+        # through to the relying party (#18). Optional, so not in `required`.
+        provenance: { $ref: "#/components/schemas/Provenance" }
 
     ImportAgentsRequest:
       type: object
