@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -32,6 +33,14 @@ type Config struct {
 	AdminKey        string
 	LogLevel        string
 	Classify        Classify
+	// ScoreSignalsPath points at a provider-signal config (see scorecontainer.
+	// LoadSignals). Empty = no provider signals. A provider listed there
+	// registers with a config entry + a hydrator and no Go code. A relative path
+	// is resolved against the config file's directory (like the profile paths).
+	// A set-but-missing path is a boot error, not a silent no-op — see
+	// LoadSignals — so "none" is expressed by leaving this empty, not by pointing
+	// at a file that isn't there.
+	ScoreSignalsPath string
 }
 
 // defaultClassify mirrors engine.DefaultThresholds (20 / 50 / 80 / 90).
@@ -55,6 +64,9 @@ type yamlConfig struct {
 	Log struct {
 		Level string `yaml:"level"`
 	} `yaml:"log"`
+	Signals struct {
+		Path string `yaml:"path"`
+	} `yaml:"signals"`
 	Classify *struct {
 		Untrusted         int `yaml:"untrustedThreshold"`
 		Transactional     int `yaml:"transactionalThreshold"`
@@ -85,15 +97,25 @@ func Load(path string) (Config, error) {
 	}
 
 	c := Config{
-		ListenAddr:      orDefault(yc.Listen.Addr, ":8080"),
-		DBPath:          orDefault(yc.DB.Path, "agent-trust-discovery.db"),
-		AdminRequireKey: yc.Admin.RequireKey == nil || *yc.Admin.RequireKey, // default true
-		AdminKey:        yc.Admin.Key,
-		LogLevel:        orDefault(yc.Log.Level, "info"),
-		Classify:        defaultClassify(),
+		ListenAddr:       orDefault(yc.Listen.Addr, ":8080"),
+		DBPath:           orDefault(yc.DB.Path, "agent-trust-discovery.db"),
+		AdminRequireKey:  yc.Admin.RequireKey == nil || *yc.Admin.RequireKey, // default true
+		AdminKey:         yc.Admin.Key,
+		LogLevel:         orDefault(yc.Log.Level, "info"),
+		Classify:         defaultClassify(),
+		ScoreSignalsPath: yc.Signals.Path,
 	}
 	if v, ok := os.LookupEnv(AdminKeyEnv); ok {
 		c.AdminKey = v
+	}
+	// Resolve a relative signals.path against the config file's directory, the
+	// same way main.go resolves default-profile.yaml and profiles/. Without this
+	// the path resolved against the process working directory while profiles
+	// resolved against the config dir, so `--config /etc/atd/runtime.yaml` with
+	// `signals.path: config/score-signals.yaml` hunted for the signals file
+	// wherever the supervisor happened to start. An absolute path is used as-is.
+	if c.ScoreSignalsPath != "" && !filepath.IsAbs(c.ScoreSignalsPath) {
+		c.ScoreSignalsPath = filepath.Join(filepath.Dir(path), c.ScoreSignalsPath)
 	}
 	if yc.Classify != nil {
 		cl := Classify{

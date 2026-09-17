@@ -195,10 +195,55 @@ active-`0`. This decides whether your signal is a *term* in the average or is
 simply *not present* when you have no data on an agent; it does not change how a
 present observation scores.
 
+## Config-driven registration (a provider score signal, no Go code)
+
+Steps 1–2 above compile a custom signal into the binary. A provider that just
+needs a **0–100 dimension score** does not have to: it registers a generic
+`scorecontainer` signal from config and hydrates it over the import API, with no
+Go code at all.
+
+Point the runtime config at a score-signals file (a relative path resolves
+against the config file's directory, like the profile paths):
+
+```yaml
+# config.yaml
+signals:
+  path: config/score-signals.yaml
+```
+
+```yaml
+# config/score-signals.yaml — one entry per provider dimension score.
+# Use your own vendor segment; "acme" here is a placeholder.
+signals:
+  - id: acme.safety.score            # vendor.dimension.name; segment must match dimension
+    dimension: safety
+    threshold: 70                     # score below this adds SAFETY_ACME_SCORE_LOW;
+                                      # omit for the default (70), or 0 for no backstop
+  - id: agentgraph.safety.score      # a second provider, beside the first, no core change
+    dimension: safety
+    subject: tool                     # this score is about the tool/MCP server, not the agent
+```
+
+`subject` defaults to `agent`. Declare it (an open lowercase token — `agent`,
+`tool`, `org`, …) when a score is about a different entity than the agent, so a
+Trust Index can bucket by subject and never average, e.g., a tool's safety into
+an agent's safety within one dimension.
+
+At boot the engine materializes a `scorecontainer` signal per entry (§the
+neutral container: `internal/scoring/signals/scorecontainer`), so each gets the
+same validation, dimension-scoped risk-code passthrough, low-score backstop, and
+absence semantics as a code-registered signal. Give it a weight (step 3), and
+the provider's hydrator POSTs `{score, riskCodes, explanation}` observations to
+`/v1/internal/observations/import` for that id, with any evidence on the
+observation's `provenance` envelope. Leaving `signals.path` unset registers no
+provider signals (opt-in); a path that is set but points at a missing file is a
+boot error, not a silent no-op, so a misresolved path fails loudly.
+
 ## What you do not do
 
 - No code generation, no `plugin` loading.
 - No separate value-schema registry — `Validate` is the schema.
-- No engine changes to add a signal — the engine discovers signals through the
-  registry. (The absence semantics above are an existing engine capability a
+- No engine changes to add a signal — code-registered signals go through the
+  registry, and provider score signals come from config (both discovered at
+  boot). (The absence semantics above are an existing engine capability a
   signal opts into, not a per-signal engine change.)

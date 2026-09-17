@@ -14,6 +14,7 @@ import (
 	"github.com/agentnameservice/agent-trust-discovery/internal/scoring/engine"
 	"github.com/agentnameservice/agent-trust-discovery/internal/scoring/registry"
 	"github.com/agentnameservice/agent-trust-discovery/internal/scoring/signals"
+	"github.com/agentnameservice/agent-trust-discovery/internal/scoring/signals/scorecontainer"
 	"github.com/agentnameservice/agent-trust-discovery/internal/search"
 )
 
@@ -46,6 +47,28 @@ func Build(ctx context.Context, cfg config.Config, profileDefaultPath, profileDi
 	for _, s := range signals.BuiltIns(nil) {
 		if err := reg.Register(s); err != nil {
 			return nil, nil, fmt.Errorf("server: register signal: %w", err)
+		}
+	}
+
+	// Config-driven provider signals (the prometheus-exporter model): every
+	// entry in the score-signals config materializes a scorecontainer signal,
+	// so a provider registers a dimension score with a config entry + a hydrator
+	// and no Go code. Registered before profile validation so a profile may
+	// weight them; registry.Register rejects a duplicate/empty id, so a config
+	// that collides with a built-in fails loudly at boot.
+	//
+	// An unset ScoreSignalsPath means "no provider signals" and is the only
+	// no-op path; a set-but-missing path is an error inside LoadSignals, so a
+	// misresolved path fails the boot rather than silently registering nothing.
+	if cfg.ScoreSignalsPath != "" {
+		provided, err := scorecontainer.LoadSignals(cfg.ScoreSignalsPath)
+		if err != nil {
+			return nil, nil, fmt.Errorf("server: load score signals: %w", err)
+		}
+		for _, s := range provided {
+			if err := reg.Register(s); err != nil {
+				return nil, nil, fmt.Errorf("server: register score signal %s: %w", s.ID(), err)
+			}
 		}
 	}
 
