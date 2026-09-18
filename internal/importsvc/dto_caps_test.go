@@ -114,6 +114,8 @@ func TestObservationDTOToDomain_EvidenceURLScheme(t *testing.T) {
 		"/relative/path",
 		"http:///no-host",
 		"ftp://example.com/x",
+		"https://user:hunter2@example.com/scan", // userinfo: credential leak + host-spoof shape
+		"https://user@example.com/scan",         // userinfo without a password is still rejected
 	} {
 		t.Run("reject "+raw, func(t *testing.T) {
 			d := base
@@ -129,6 +131,8 @@ func TestObservationDTOToDomain_EvidenceURLScheme(t *testing.T) {
 		"",
 		"http://example.com",
 		"https://aim.example.com/findings/42",
+		"http://127.0.0.1/x",             // loopback: a private hydrator is a legit deployment
+		"http://169.254.169.254/latest",  // link-local: SSRF is the dereferencer's job, not import
 	} {
 		t.Run("accept "+raw, func(t *testing.T) {
 			d := base
