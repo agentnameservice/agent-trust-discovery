@@ -436,3 +436,42 @@ func TestAbsentInformativeSignalStillCountsZero(t *testing.T) {
 		t.Errorf("integrity = %d, want 40 (informative absence scores 0 and counts)", dim.Score)
 	}
 }
+
+// A stored observation's provenance is carried onto the signal score so it
+// reaches the API response; a signal with no observation carries nil.
+func TestEvaluateCarriesProvenance(t *testing.T) {
+	r := newRegistry(t, time.Now)
+	store := fakeStore{obs: map[domain.SignalID]*domain.SignalObservation{
+		"certtype": {
+			Value:      json.RawMessage(`{}`),
+			Provenance: &domain.Provenance{AIMID: "did:web:aim.example.com", EvidenceURL: "https://aim.example.com/finding/1"},
+		},
+	}}
+	eng := engine.New(store, r, engine.DefaultThresholds(), time.Now)
+	ev, err := eng.Evaluate(context.Background(), domain.Agent{ID: "a"}, defaultProfile())
+	if err != nil {
+		t.Fatalf("Evaluate: %v", err)
+	}
+
+	var certScore, noObsScore *domain.SignalScore
+	for di := range ev.Dimensions {
+		for si := range ev.Dimensions[di].SignalScores {
+			s := &ev.Dimensions[di].SignalScores[si]
+			switch {
+			case s.SignalID == "certtype":
+				certScore = s
+			case s.Provenance == nil:
+				noObsScore = s
+			}
+		}
+	}
+	if certScore == nil {
+		t.Fatal("certtype signal score missing")
+	}
+	if certScore.Provenance == nil || certScore.Provenance.AIMID != "did:web:aim.example.com" {
+		t.Errorf("provenance not carried onto score: %+v", certScore.Provenance)
+	}
+	if noObsScore == nil {
+		t.Error("expected at least one signal with no observation to carry nil provenance")
+	}
+}

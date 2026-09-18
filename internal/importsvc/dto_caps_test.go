@@ -95,3 +95,51 @@ func TestObservationDTOToDomain_LengthCaps(t *testing.T) {
 		})
 	}
 }
+
+// TestObservationDTOToDomain_EvidenceURLScheme pins #18's URL validation: a
+// non-empty provenance.evidenceUrl must be an absolute http(s) URL so a
+// javascript:/file:/bare-string value can't reach a relying party that renders
+// it as a link. Empty stays allowed (evidenceUrl is optional).
+func TestObservationDTOToDomain_EvidenceURLScheme(t *testing.T) {
+	base := observationDTO{
+		AgentID: "a1", SignalID: "certtype",
+		ObservedAt: "2026-06-04T08:00:00Z",
+		Value:      json.RawMessage(`{"type":"DV"}`),
+	}
+
+	for _, raw := range []string{
+		"javascript:alert(1)",
+		"file:///etc/passwd",
+		"not a url at all",
+		"/relative/path",
+		"http:///no-host",
+		"ftp://example.com/x",
+		"https://user:hunter2@example.com/scan", // userinfo: credential leak + host-spoof shape
+		"https://user@example.com/scan",         // userinfo without a password is still rejected
+	} {
+		t.Run("reject "+raw, func(t *testing.T) {
+			d := base
+			d.Provenance = &provenanceDTO{EvidenceURL: raw}
+			_, err := d.toDomain()
+			if err == nil || !strings.Contains(err.Error(), "evidenceUrl") {
+				t.Fatalf("evidenceUrl %q: want evidenceUrl error, got %v", raw, err)
+			}
+		})
+	}
+
+	for _, raw := range []string{
+		"",
+		"http://example.com",
+		"https://aim.example.com/findings/42",
+		"http://127.0.0.1/x",             // loopback: a private hydrator is a legit deployment
+		"http://169.254.169.254/latest",  // link-local: SSRF is the dereferencer's job, not import
+	} {
+		t.Run("accept "+raw, func(t *testing.T) {
+			d := base
+			d.Provenance = &provenanceDTO{AIMID: "did:web:aim.example.com", EvidenceURL: raw}
+			if _, err := d.toDomain(); err != nil {
+				t.Fatalf("evidenceUrl %q: want ok, got %v", raw, err)
+			}
+		})
+	}
+}
