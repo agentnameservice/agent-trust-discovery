@@ -1,0 +1,26 @@
+# TrustModel Trust Index signals for agent-trust-discovery (OPT-IN EXAMPLE).
+#
+# The Linux Foundation Agent Name Service (ANS) leaves solvency, behavior and
+# safety EMPTY in v1 (no signals registered). These three fill exactly those
+# dimensions from TrustModel's independent evaluation — with NO Go code, as
+# config-driven registrations of the shared scorecontainer (#16). TrustModel's
+# hydrator POSTs {score, riskCodes, explanation} observations for the ids below
+# to /v1/internal/observations/import; core never re-derives a tier.
+#
+# To use: point your runtime config's `signals.path` at this file, and copy
+# config/examples/trustmodel-profile.yaml into config/profiles/ to activate the
+# three dimensions and weight the signals. Dimension definitions:
+# docs/trustmodel-signals.md.
+signals:
+  - id: trustmodel.behavior.score
+    dimension: behavior
+    threshold: 70
+  - id: trustmodel.safety.score
+    dimension: safety
+    threshold: 70
+  # solvency scores the controlling ORGANIZATION, not the agent (subject: org),
+  # so an index never averages an org score into an agent score (issue #9).
+  - id: trustmodel.solvency.score
+    dimension: solvency
+    subject: org
+    threshold: 70
