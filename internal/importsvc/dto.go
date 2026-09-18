@@ -238,6 +238,14 @@ func checkStrLen(label, s string, maxLen int) error {
 // value like "javascript:alert(1)", "file:///etc/passwd", or a bare
 // "not a url" must not reach a consumer that renders it as a link. Empty is
 // allowed (evidenceUrl is optional).
+//
+// Userinfo is rejected too: since #18 turns evidenceUrl from stored-and-inert
+// into something every relying party reads, "https://user:pass@host/x" would
+// publish a credential to all of them, and userinfo in a rendered link is a
+// host-spoof shape (the eye reads "user" as the host). We do NOT block loopback
+// or link-local hosts here — a private hydrator on loopback is a legitimate
+// deployment, and a string check at import is the wrong layer for SSRF; that
+// belongs to whatever dereferences the URL, with its own allowlist.
 func checkEvidenceURL(label, raw string) error {
 	if raw == "" {
 		return nil
@@ -245,6 +253,9 @@ func checkEvidenceURL(label, raw string) error {
 	u, err := url.Parse(raw)
 	if err != nil || !u.IsAbs() || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 		return errInvalidRequest(fmt.Sprintf("%s must be an absolute http(s) URL", label))
+	}
+	if u.User != nil {
+		return errInvalidRequest(fmt.Sprintf("%s must not contain userinfo (credentials in the URL)", label))
 	}
 	return nil
 }
