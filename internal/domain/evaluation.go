@@ -50,6 +50,12 @@ type SignalScore struct {
 	Weight      float64 // from active scoring profile (0 means inactive)
 	Explanation string  // human-readable, surfaced in the API response
 	Attestation Attestation
+	// Provenance is the evidence behind the observation this score was computed
+	// from (the producing AIM + a URL to its published finding), or nil when no
+	// observation was recorded. It is carried through to the API response so a
+	// relying party can trace a score to its source and audit it rather than
+	// trust the number — the point of storing provenance in the first place.
+	Provenance *Provenance
 }
 
 // DimensionScore is one dimension's rolled-up score and its contributing signal
