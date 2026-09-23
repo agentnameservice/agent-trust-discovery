@@ -243,13 +243,18 @@ func (s ScoreSignal) Validate(value json.RawMessage) error {
 // explanation is surfaced.
 func (s ScoreSignal) Evaluate(_ context.Context, _ domain.Agent, obs *domain.SignalObservation) (port.SignalResult, error) {
 	prefix := s.prefix()
+	// ScoreSignal is AbsenceAware with AbsenceInformative()==false, so the engine
+	// EXCLUDES this signal (never calls Evaluate) when there is no observation.
+	// A nil obs here therefore can't happen on the engine path — the old branch
+	// that synthesized a "{DIMENSION}_{VENDOR}_UNKNOWN" term was dead behind that
+	// exclusion (issue #23), and fabricating a passing-ish term for a state the
+	// engine already dropped only muddied "no provider covered this" vs "covered
+	// and clean". Surfacing that "uncovered" distinction is a response-shape
+	// concern handled in the engine (see #24), not a synthetic risk code here. We
+	// keep a defensive error rather than a nil deref if a direct caller misuses it.
 	if obs == nil {
-		return port.SignalResult{
-			Raw:         0,
-			Explanation: fmt.Sprintf("no %s observation recorded for %s", s.dimension, s.id),
-			Attestation: domain.AttestationUnattested,
-			RiskCodes:   []string{prefix + s.vendor + "_UNKNOWN"},
-		}, nil
+		return port.SignalResult{}, fmt.Errorf(
+			"%s: Evaluate called with nil observation; scorecontainer is AbsenceAware so the engine excludes absent signals", s.id)
 	}
 	v, err := decodeScore(obs.Value)
 	if err != nil {
