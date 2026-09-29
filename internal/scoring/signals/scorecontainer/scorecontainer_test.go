@@ -59,14 +59,14 @@ func TestSubject(t *testing.T) {
 func TestEvaluate(t *testing.T) {
 	s := New("trustmodel.safety.score", domain.DimensionSafety, nil)
 
-	// nil obs -> 0 + vendor-scoped UNKNOWN
-	r, _ := s.Evaluate(context.TODO(), domain.Agent{}, nil)
-	if r.Raw != 0 || !contains(r.RiskCodes, "SAFETY_TRUSTMODEL_UNKNOWN") {
-		t.Errorf("nil: raw=%d codes=%v", r.Raw, r.RiskCodes)
+	// nil obs -> defensive error (never happens on the engine path: AbsenceAware
+	// excludes absent signals, so the old synthesized UNKNOWN term was dead — #23)
+	if _, err := s.Evaluate(context.TODO(), domain.Agent{}, nil); err == nil {
+		t.Error("nil obs: expected a defensive error, got nil")
 	}
 
 	// clean high score -> no codes
-	r, _ = s.Evaluate(context.TODO(), domain.Agent{}, obs(`{"score":86}`))
+	r, _ := s.Evaluate(context.TODO(), domain.Agent{}, obs(`{"score":86}`))
 	if r.Raw != 86 || len(r.RiskCodes) != 0 {
 		t.Errorf("high: raw=%d codes=%v", r.Raw, r.RiskCodes)
 	}
