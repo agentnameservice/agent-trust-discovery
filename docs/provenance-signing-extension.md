@@ -37,7 +37,7 @@ behavior (back-compatible; the score is unsigned, as today).
 }
 ```
 
-## Design decisions (the three pinned in review)
+## Design decisions
 
 ### 1. Embedded (compact JWS), and state the binding
 
@@ -58,6 +58,15 @@ signature layer. That comparison *is* the drift check; left unstated it is a hol
 (the relying party would hold the score twice with nothing saying they must
 agree).
 
+**Which `riskCodes` are compared (normative).** The bound set is the signer's
+**stored observation `riskCodes`** — the codes the signer actually emitted and
+signed — **not** the evaluated `SignalScore`'s code set. Relying-party-injected
+backstop codes (e.g. `_SCORE_LOW`, raised by the relying party's engine, never by
+a signer) **MUST** be excluded from the compared set. Binding against the
+evaluated set would false-fail every honest low score, because the relying party
+adds a code the signer cannot have signed. §3's payload `riskCodes` is therefore
+the stored-observation set, and the verifier compares against that.
+
 ### 2. `kid` in the envelope — otherwise `jwks` reintroduces the fetch
 
 The JWS protected header **MUST** include a `kid`, and the envelope **MUST**
@@ -65,8 +74,11 @@ carry the same `kid`. The `kid` **MUST** be the [RFC 7638](https://www.rfc-edito
 JWK thumbprint of the verifying key (or otherwise strictly key-derived), so a
 rotated key can **never** reuse a `kid`; otherwise "pin and cache by `kid`"
 silently serves a stale key past rotation. A verifier pins and caches the
-verifying key by `kid`; the `jwks` URL is **rotation/discovery fallback only**,
-not the verify-time hot path.
+verifying key by **`(iss, kid)`** — the key location is derived from the signed
+`iss` (§3), **not** the envelope — so the same `kid` under a different issuer is a
+different cache entry and can never be served across issuers. The envelope's
+`jwks` URL is **rotation/discovery fallback only**, consistent with the
+`iss`-derived location, and never the verify-time hot path.
 A bare well-known JWKS URL alone is still a fetch at verification time and does
 not deliver the no-refetch property. Keys rotate rarely; evidence is per-scan —
 that asymmetry is where the amortisation comes from.
@@ -77,13 +89,14 @@ The signed payload **MUST** include:
 
 ```jsonc
 {
+  "iss": "did:web:agentgraph.co",               // issuer — authoritative, MUST; §3a
   "sub": "<subject id — the entity the scan is about>",
   "subjectClass": "agent" | "tool" | "org",   // the #16 subject bucket
   "iat": 1789600000,                            // issued-at (seconds)
-  "exp": 1792192000,                            // expiry (seconds) — freshness, §3
+  "exp": 1792192000,                            // expiry (seconds) — freshness, §3b
   "dimension": "safety",
   "score": 0,                                   // authoritative; bound per §1
-  "riskCodes": ["SAFETY_…"]                     // bound by set-equality, §1
+  "riskCodes": ["SAFETY_…"]                     // stored-observation set; bound §1
 }
 ```
 
@@ -92,6 +105,32 @@ mismatch is a verification failure. Without a signed subject, a valid signed
 scan of one agent can be re-attached to another agent's observation and still
 verify. Carrying `subjectClass` in the payload also lets the credential state
 its own #16 bucket rather than trusting the registration entry to be right.
+
+### 3a. `iss` binds the key *and* the vendor — not the envelope
+
+The payload **MUST** carry `iss`, the signer's issuer identifier. A JWK
+thumbprint (§2) binds `kid` to a key; it does **not** bind that key to an issuer,
+so on a cold cache a verifier that trusts the envelope would fetch whatever `jwks`
+the envelope names and verify a re-attributed credential. Therefore:
+
+- the verifier **MUST** derive the key location from the signed `iss` (e.g. the
+  `did:web` / `.well-known` location for `iss`), **not** from `provenance.signed.jwks`;
+- the verifier caches by `(iss, kid)` (§2);
+- the verifier **MUST** require the target signal's **vendor segment to equal
+  `iss`** — the credential may only speak for the signal whose vendor it is.
+
+This one rule closes the re-attribution path and the cross-vendor
+`dimension: safety` collision together: a credential signed by vendor A cannot be
+bound to vendor B's `safety` signal even if both name `dimension: safety`, because
+the vendor segment would not equal the signed `iss`. A payload whose `iss` does
+not resolve, or whose vendor segment ≠ `iss`, is a verification failure.
+
+Note on scope: `explanation` (and any free-text narrative) is **unsigned** — it
+is not part of the signed payload and a relying party **MUST NOT** present it as
+attested. The signature covers the scored values (`score`, `dimension`,
+`riskCodes`) and the bindings (`iss`, `sub`, `iat`/`exp`), nothing else.
+
+### 3b. Freshness
 
 **Freshness (normative).** `iat` is necessary but **not sufficient**: a signed
 "safe" verdict carrying only an `iat` verifies forever, so a score signed before
@@ -106,20 +145,25 @@ signature failure.
 
 1. If `provenance.signed` is absent → score is unsigned; stop (unchanged).
 2. Parse the compact JWS. Read `kid` from the protected header; it **MUST** equal
-   `provenance.signed.kid`.
-3. Resolve the key by `kid` from cache; on miss, fetch `jwks` once, select by
-   `kid`, cache. (Fetch is discovery/rotation, not the steady-state path.)
+   `provenance.signed.kid`. The payload **MUST** carry `iss`.
+3. Resolve the key from the location **derived from the signed `iss`** (§3a),
+   keyed by `(iss, kid)` in cache; on miss, fetch once and cache. The envelope's
+   `jwks` is rotation/discovery fallback only and **MUST** be consistent with the
+   `iss`-derived location. (Fetch is discovery/rotation, not the steady-state path.)
 4. Verify the JWS signature. `alg` **MUST** be checked against an explicit
    **allowlist** (`EdDSA` / Ed25519 at minimum); any `alg` outside it —
    including `alg: none` — is rejected. The allowlist closes algorithm
    confusion, not just the one known-bad value.
-5. **Binding:** compare the payload's `score` / `dimension` (scalar equality)
-   and `riskCodes` (set-equality) to the container fields → mismatch is a
+5. **Issuer:** the target signal's **vendor segment MUST equal `iss`** → mismatch
+   (or an `iss` that does not resolve) is a failure (§3a).
+6. **Binding:** compare the payload's `score` / `dimension` (scalar equality) and
+   `riskCodes` (set-equality, against the **stored-observation** set with
+   relying-party backstop codes excluded) to the container fields → mismatch is a
    failure (§1).
-6. **Subject:** compare the payload's `sub` to the observation's subject →
+7. **Subject:** compare the payload's `sub` to the observation's subject →
    mismatch is a failure (§3).
-7. **Freshness:** reject if past `exp`, or — when `exp` is absent — past the
-   relying party's max-age against `iat` (§3).
+8. **Freshness:** reject if past `exp`, or — when `exp` is absent — past the
+   relying party's max-age against `iat` (§3b).
 
 Any failure ⇒ the score is treated as **unsigned/untrusted**, not silently
 accepted.
@@ -137,8 +181,18 @@ The shared corpus **MUST** carry the **negatives**, not just the happy path — 
 suite that only proves two signers agree on a valid credential does not prove
 either one *rejects* a bad one, which is where portability actually breaks. At
 minimum: valid → accept, **score-mismatch → fail**, **wrong `sub` → fail**,
-**`alg: none` → reject**, **`alg` outside the allowlist → reject**,
-**missing / absent `kid` → reject**, and **past-`exp` / stale-`iat` → reject**.
+**wrong `iss` (or vendor segment ≠ `iss`) → fail**, **`alg: none` → reject**,
+**`alg` outside the allowlist → reject**, **missing / absent `kid` → reject**,
+and **past-`exp` / stale-`iat` → reject**.
+
+**Deterministic freshness vectors (normative for the corpus).** The freshness
+negatives are only reproducible across implementations if time is fixed in the
+fixture: each vector **MUST** pin an explicit **evaluation reference time** and
+the **max-age** it is checked against, alongside the payload's `iat`/`exp`, so
+`past-exp` and `stale-iat` yield exactly one expected verdict everywhere (the
+fixed-reference-time approach OSAA RFCs#6 uses). A vector that leaves the
+evaluation time to wall-clock is not a conformance vector — two runs on different
+days would disagree.
 
 ## Non-goals / open
 
