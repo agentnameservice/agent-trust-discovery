@@ -228,13 +228,29 @@ term. Notes:
   before `Evaluate`, so it produces no cap — only a *present* gate caps. A gate
   and the absence policy never fight: absent means "not participating," present
   means "cap applies."
-- **Handle your own errors — a returned `error` loses the cap.** When `Evaluate`
-  returns an `error`, the engine degrades that signal to a capless `Raw:0` *term*
-  (plus `SIGNAL_EVALUATION_FAILED`), so a gate that errors stops gating and just
-  averages back in — a hard stop can silently become a mediocre score. If a
-  backend/lookup your gate depends on fails, decide inside `Evaluate` whether that
-  failure should block: to keep gating, return the `DimensionCap` with a risk code
-  rather than returning `err`.
+- **Handle your own errors — a returned `error` loses the cap (fail-open default).**
+  When `Evaluate` returns an `error`, the engine by default degrades that signal to
+  a capless `Raw:0` *term* (plus `SIGNAL_EVALUATION_FAILED`), so a gate that errors
+  stops gating and just averages back in — a hard stop can silently become a
+  mediocre score. That default is deliberate: one buggy signal must not take out
+  scoring for every agent. If a backend/lookup your gate depends on fails, you can
+  either handle it inside `Evaluate` (return the `DimensionCap` with a risk code
+  rather than `err`), or **opt into fail-closed** (next bullet).
+- **Opt-in fail-closed on error (`FailClosedGate`, issue #24).** A gate whose job
+  is to block can declare that "could not check" should mean "do not pass".
+  Implement the optional `port.FailClosedGate` interface:
+
+  ```go
+  // FailClosedCap is the dimension cap applied when this gate's Evaluate errors.
+  func (g MyGate) FailClosedCap() int { return 0 } // 0 = hard block
+  ```
+
+  The engine then caps the dimension at `FailClosedCap()` (clamped to `[0,100]`)
+  on an `Evaluate` error instead of degrading to a term, and surfaces
+  `SIGNAL_EVALUATION_FAILED_GATED` alongside `SIGNAL_EVALUATION_FAILED` so a reader
+  can tell the cap came from a *failure*, not a verdict. Still subject to the
+  weight-`0` rule (a disabled gate neither scores nor caps). Opt-in only — signals
+  that don't implement it keep the fail-open default above.
 
 ## Config-driven registration (a provider score signal, no Go code)
 

@@ -76,6 +76,35 @@ type AbsenceAware interface {
 	AbsenceInformative() bool
 }
 
+// FailClosedGate is an OPTIONAL interface a gating Signal may implement to opt
+// into FAIL-CLOSED behavior when its Evaluate returns an error (issue #24).
+//
+// By default the engine fails OPEN on an Evaluate error: it degrades the signal
+// to a capless Raw:0 term plus a SIGNAL_EVALUATION_FAILED risk code, so a gate
+// that errors stops gating and just averages back in — a hard stop can silently
+// become a mediocre score. That default is deliberate (one buggy signal must not
+// take out scoring for every agent), but it is wrong for a gate whose whole job
+// is to block: if a sanctions/compliance lookup the gate depends on is
+// unreachable, "I could not check" should be able to mean "do not pass", not
+// "pass with a dent".
+//
+// A signal that implements this interface declares the cap to apply when its own
+// Evaluate errors. The engine then treats the errored gate as present-and-capping
+// at FailClosedCap() (clamped to [0,100]) instead of degrading to a term, and
+// surfaces SIGNAL_EVALUATION_FAILED_GATED alongside SIGNAL_EVALUATION_FAILED so a
+// reader can tell the dimension was capped BY an evaluation failure rather than
+// by a real verdict. Gating stays a code-level decision — a config-registered
+// signal cannot implement this, consistent with "config signals are terms, gates
+// are code". Opt-in only: signals that do not implement it keep the fail-open
+// default above.
+type FailClosedGate interface {
+	// FailClosedCap is the dimension cap to apply when this signal's Evaluate
+	// returns an error. Typically 0 (a hard block). Clamped to [0,100] by the
+	// engine like any other cap. Only honored when the signal has a non-zero
+	// profile weight — a disabled gate neither scores nor caps.
+	FailClosedCap() int
+}
+
 // SignalRegistry holds the signals a binary knows about. The concrete
 // implementation lives with the scoring engine (design §4) to avoid an import
 // cycle; this port lets the import and search services depend on the abstraction.

@@ -23,6 +23,13 @@ import (
 // records this generic marker so operators can see something went wrong.
 const RiskSignalEvaluationFailed = "SIGNAL_EVALUATION_FAILED"
 
+// RiskSignalEvaluationFailedGated is recorded in addition to
+// RiskSignalEvaluationFailed when a gate that opted into fail-closed
+// (port.FailClosedGate) errors, so the engine caps its dimension at the gate's
+// declared cap instead of degrading to a term (issue #24). It lets a reader tell
+// the dimension was capped BY an evaluation failure, not by a real verdict.
+const RiskSignalEvaluationFailedGated = "SIGNAL_EVALUATION_FAILED_GATED"
+
 // ObservationReader is the slice of the store the engine needs: the latest
 // observation per (agent, signal). port.AgentStore satisfies it.
 type ObservationReader interface {
@@ -84,13 +91,27 @@ func (e *Engine) Evaluate(ctx context.Context, agent domain.Agent, profile domai
 		//     dimension score.
 		res, evalErr := sig.Evaluate(ctx, agent, obs)
 		if evalErr != nil {
-			log.WarnContext(ctx, "engine: signal evaluation failed, degrading",
-				"agentId", agent.ID, "signalId", sig.ID(), "error", evalErr)
+			// (a) default: fail OPEN — degrade to a capless Raw:0 term.
 			res = port.SignalResult{
 				Raw:         0,
 				Explanation: fmt.Sprintf("signal evaluation failed: %s", evalErr),
 				Attestation: domain.AttestationUnattested,
 				RiskCodes:   []string{RiskSignalEvaluationFailed},
+			}
+			// (c) opt-in fail-CLOSED (issue #24): a gate that implements
+			// port.FailClosedGate turns its own Evaluate error into a cap, so
+			// "could not check" blocks instead of averaging back in. Surfaced
+			// with a distinct risk code so a reader can tell the cap came from a
+			// failure, not a verdict. Still subject to the weight>0 gate below.
+			if fc, ok := sig.(port.FailClosedGate); ok {
+				failCap := clampRaw(fc.FailClosedCap())
+				res.DimensionCap = &failCap
+				res.RiskCodes = append(res.RiskCodes, RiskSignalEvaluationFailedGated)
+				log.WarnContext(ctx, "engine: gate evaluation failed, failing closed (capping dimension)",
+					"agentId", agent.ID, "signalId", sig.ID(), "cap", failCap, "error", evalErr)
+			} else {
+				log.WarnContext(ctx, "engine: signal evaluation failed, degrading",
+					"agentId", agent.ID, "signalId", sig.ID(), "error", evalErr)
 			}
 		}
 		clamped := clampRaw(res.Raw)
