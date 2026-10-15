@@ -29,7 +29,7 @@ get "$RO?query=booking&statuses=ACTIVE" | py '
 
 # ── Stop 3: detail with the Trust Evaluation breakdown ────────────────
 stop 3 "Detail for agent-001 (Trust Evaluation breakdown)"
-echo "  Signals are grouped by pillar (dimension); each pillar score = weighted average of its raw scores."
+echo "  Signals are grouped by dimension; each dimension score = weighted average of its raw scores."
 get "$RO/agent-001" | py '
 te=d["trustEvaluation"]; tv=te["trustVector"];
 print("  trustVector:", tv);
@@ -37,7 +37,7 @@ print("  recommendedProfile:", te["recommendedProfile"]);
 print("  verificationTier:", te["verificationTier"]);
 print("  riskFactors:", te["riskFactors"]);
 print("  scoringProfile:", te["scoringProfile"]);
-print("  signals by pillar:");
+print("  signals by dimension:");
 for dim in te["dimensions"]:
     ss = dim["signalScores"]
     print("    {} (score {}){}".format(dim["dimension"], dim["score"], "" if ss else " — no signals in v1"))
