@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/agentnameservice/agent-trust-discovery/compare/v0.1.3...v0.1.4) (2026-10-20)
+
+
+### Documentation
+
+* **demo:** print "dimension" instead of "pillar" in the walkthroughs ([#33](https://github.com/agentnameservice/agent-trust-discovery/issues/33)) ([44da42a](https://github.com/agentnameservice/agent-trust-discovery/commit/44da42a96ae1411fec190a7d98b46b583c8e007a))
+
 ## [0.1.3](https://github.com/agentnameservice/agent-trust-discovery/compare/v0.1.2...v0.1.3) (2026-09-29)
 
 
