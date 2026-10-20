@@ -62,7 +62,7 @@ get "$RO?statuses=ACTIVE" | py '
 
 # ── Stop 3: detail with the Trust Evaluation breakdown ────────────────
 stop 3 "Detail for $ID (Trust Evaluation breakdown)"
-echo "  Signals are grouped by pillar (dimension); each pillar score = weighted average of its raw scores."
+echo "  Signals are grouped by dimension; each dimension score = weighted average of its raw scores."
 get "$RO/$ID" | py '
 te=d["trustEvaluation"]; tv=te["trustVector"];
 vec=" ".join("{}={}".format(k, tv[k]) for k in ("integrity","identity","solvency","behavior","safety"));
@@ -71,7 +71,7 @@ print("  recommendedProfile:", te["recommendedProfile"]);
 print("  verificationTier:", te.get("verificationTier") or "unset");
 print("  riskFactors:", ", ".join(te["riskFactors"]) or "(none)");
 print("  scoringProfile:", te["scoringProfile"]);
-print("  signals by pillar:");
+print("  signals by dimension:");
 for dim in te["dimensions"]:
     ss = dim["signalScores"]
     print("    {} (score {}){}".format(dim["dimension"], dim["score"], "" if ss else " — no signals in v1"))
