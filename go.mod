@@ -3,7 +3,7 @@ module github.com/agentnameservice/agent-trust-discovery
 go 1.26.5
 
 require (
-	github.com/go-chi/chi/v5 v5.3.0
+	github.com/go-chi/chi/v5 v5.4.0
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.51.0
 )
