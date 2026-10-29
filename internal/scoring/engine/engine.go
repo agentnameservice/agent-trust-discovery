@@ -26,8 +26,9 @@ const RiskSignalEvaluationFailed = "SIGNAL_EVALUATION_FAILED"
 // RiskSignalEvaluationFailedGated is recorded in addition to
 // RiskSignalEvaluationFailed when a gate that opted into fail-closed
 // (port.FailClosedGate) errors, so the engine caps its dimension at the gate's
-// declared cap instead of degrading to a term (issue #24). It lets a reader tell
-// the dimension was capped BY an evaluation failure, not by a real verdict.
+// declared cap on top of the still-created Raw:0 term (issue #24) — the cap, not
+// the term, is what blocks. It lets a reader tell the dimension was capped BY an
+// evaluation failure, not by a real verdict.
 const RiskSignalEvaluationFailedGated = "SIGNAL_EVALUATION_FAILED_GATED"
 
 // ObservationReader is the slice of the store the engine needs: the latest
