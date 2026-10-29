@@ -484,6 +484,66 @@ func TestGateEvaluationErrorDegradesToTermNotCap(t *testing.T) {
 
 func capPtr(n int) *int { return &n }
 
+// failClosedGateSpy opts into fail-closed (issue #24): it embeds gateSpy (so it
+// errors on Evaluate the same way) and additionally implements
+// port.FailClosedGate, so the engine caps instead of degrading to a term.
+type failClosedGateSpy struct {
+	gateSpy
+	failCap int
+}
+
+func (g failClosedGateSpy) FailClosedCap() int { return g.failCap }
+
+// The opt-in mirror of TestGateEvaluationErrorDegradesToTermNotCap (issue #24):
+// a gate that implements FailClosedGate turns its OWN Evaluate error into a cap.
+// Safety reads 0 (capped), not the 50 the average of a degraded 0-term and a
+// passing 100 would give, and both SIGNAL_EVALUATION_FAILED and
+// SIGNAL_EVALUATION_FAILED_GATED surface so a reader can tell the cap came from a
+// failure, not a verdict. Default (non-opt-in) behavior is unchanged — the sister
+// test still fails open.
+func TestFailClosedGateCapsOnEvaluateError(t *testing.T) {
+	gate := failClosedGateSpy{
+		gateSpy: gateSpy{id: "compliance.screen", dim: domain.DimensionSafety, evalErr: errors.New("gate backend unavailable"), absenceInformative: true},
+		failCap: 0,
+	}
+	good := gateSpy{id: "safety.ok", dim: domain.DimensionSafety, raw: 100, absenceInformative: true}
+
+	r := registry.New()
+	for _, s := range []port.Signal{gate, good} {
+		if err := r.Register(s); err != nil {
+			t.Fatalf("register %s: %v", s.ID(), err)
+		}
+	}
+	eng := engine.New(fakeStore{}, r, engine.DefaultThresholds(), time.Now)
+	prof := domain.ScoringProfile{
+		Name:             "gate",
+		DimensionWeights: map[domain.Dimension]float64{domain.DimensionSafety: 1},
+		SignalWeights:    map[domain.SignalID]float64{"compliance.screen": 1, "safety.ok": 1},
+	}
+	ev, err := eng.Evaluate(context.Background(), domain.Agent{ID: "a"}, prof)
+	if err != nil {
+		t.Fatalf("Evaluate: %v", err)
+	}
+
+	safety := findDim(t, ev, domain.DimensionSafety)
+	if safety.Score != 0 {
+		t.Errorf("fail-closed gate score = %d, want 0 (capped on eval error, not averaged to 50)", safety.Score)
+	}
+	var hasGated, hasFailed bool
+	for _, rf := range ev.RiskFactors {
+		if rf == engine.RiskSignalEvaluationFailedGated {
+			hasGated = true
+		}
+		if rf == engine.RiskSignalEvaluationFailed {
+			hasFailed = true
+		}
+	}
+	if !hasGated || !hasFailed {
+		t.Errorf("riskFactors = %v, want both %s and %s", ev.RiskFactors,
+			engine.RiskSignalEvaluationFailed, engine.RiskSignalEvaluationFailedGated)
+	}
+}
+
 // evalSafety registers the given signals, evaluates one agent with safety
 // weighted, and returns the safety dimension score.
 func evalSafety(t *testing.T, store engine.ObservationReader, weights map[domain.SignalID]float64, sigs ...port.Signal) domain.DimensionScore {
