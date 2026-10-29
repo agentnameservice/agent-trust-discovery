@@ -246,7 +246,11 @@ term. Notes:
   ```
 
   The engine then caps the dimension at `FailClosedCap()` (clamped to `[0,100]`)
-  on an `Evaluate` error instead of degrading to a term, and surfaces
+  on an `Evaluate` error. The degraded `Raw:0` term is still created alongside the
+  cap, so an errored fail-closed gate behaves exactly like an ordinary gate
+  returning `Raw:0` + `DimensionCap:N` — the cap rides on top of the term, and it
+  is `DimensionCap:0` (not the term) that pulls the dimension to a hard block
+  instead of the mediocre average a bare `Raw:0` term would give. It also surfaces
   `SIGNAL_EVALUATION_FAILED_GATED` alongside `SIGNAL_EVALUATION_FAILED` so a reader
   can tell the cap came from a *failure*, not a verdict. Still subject to the
   weight-`0` rule (a disabled gate neither scores nor caps). Opt-in only — signals

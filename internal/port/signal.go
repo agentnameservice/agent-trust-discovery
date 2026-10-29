@@ -90,10 +90,14 @@ type AbsenceAware interface {
 //
 // A signal that implements this interface declares the cap to apply when its own
 // Evaluate errors. The engine then treats the errored gate as present-and-capping
-// at FailClosedCap() (clamped to [0,100]) instead of degrading to a term, and
-// surfaces SIGNAL_EVALUATION_FAILED_GATED alongside SIGNAL_EVALUATION_FAILED so a
-// reader can tell the dimension was capped BY an evaluation failure rather than
-// by a real verdict. Gating stays a code-level decision — a config-registered
+// at FailClosedCap() (clamped to [0,100]). The degraded Raw:0 term is still
+// created alongside the cap, so an errored fail-closed gate behaves exactly like
+// an ordinary gate returning Raw:0 + DimensionCap:N — the cap rides on top of the
+// term, and it is DimensionCap:0 (not the term) that makes the dimension read as a
+// hard block rather than the mediocre average a bare Raw:0 term would produce. It
+// also surfaces SIGNAL_EVALUATION_FAILED_GATED alongside SIGNAL_EVALUATION_FAILED
+// so a reader can tell the dimension was capped BY an evaluation failure rather
+// than by a real verdict. Gating stays a code-level decision — a config-registered
 // signal cannot implement this, consistent with "config signals are terms, gates
 // are code". Opt-in only: signals that do not implement it keep the fail-open
 // default above.
