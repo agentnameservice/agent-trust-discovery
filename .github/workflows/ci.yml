@@ -17,7 +17,7 @@ jobs:
         with:
           fetch-depth: 0 # full history for `git describe`
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod # tracks the `go` directive (1.26)
 
@@ -49,7 +49,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       # Third-party action pinned to a full commit SHA — GitHub-owned actions/*
