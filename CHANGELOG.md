@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.1.4](https://github.com/agentnameservice/agent-trust-discovery/compare/v0.1.3...v0.1.4) (2026-11-05)
+
+
+### Documentation
+
+* **demo:** print "dimension" instead of "pillar" in the walkthroughs ([#33](https://github.com/agentnameservice/agent-trust-discovery/issues/33)) ([44da42a](https://github.com/agentnameservice/agent-trust-discovery/commit/44da42a96ae1411fec190a7d98b46b583c8e007a))
+
+## [0.1.3](https://github.com/agentnameservice/agent-trust-discovery/compare/v0.1.2...v0.1.3) (2026-09-29)
+
+
+### Features
+
+* import RA agent-events feed into trust index pipeline ([#8](https://github.com/agentnameservice/agent-trust-discovery/issues/8)) ([ea5b30f](https://github.com/agentnameservice/agent-trust-discovery/commit/ea5b30f3eca4a721a24f124c1df45204ff7a37da))
+
+
+### Documentation
+
+* adopt DCO and AI-disclosure contribution policy ([#7](https://github.com/agentnameservice/agent-trust-discovery/issues/7)) ([6ec1034](https://github.com/agentnameservice/agent-trust-discovery/commit/6ec1034d6ce50b44650ef6df0f5c594d7b55fe87))
+* the rebase onto main dropped the "Is a missing observation informative? ([fde0b44](https://github.com/agentnameservice/agent-trust-discovery/commit/fde0b448d2dc4d2e25f6ef139c24a88734fcf027))
+
 ## [0.1.2](https://github.com/agentnameservice/agent-trust-discovery/compare/v0.1.1...v0.1.2) (2026-07-14)
 
 

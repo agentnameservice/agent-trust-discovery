@@ -255,13 +255,20 @@ term. Notes:
   can tell the cap came from a *failure*, not a verdict. Still subject to the
   weight-`0` rule (a disabled gate neither scores nor caps). Opt-in only — signals
   that don't implement it keep the fail-open default above.
+- **Config signals are terms; gates are code.** A signal registered from config
+  (next section) is **always a term** — the config path never sets a
+  `DimensionCap`. Gating is a code-level decision, so a hard stop must be a Go
+  signal that returns a `DimensionCap`, not a config entry. There is deliberately
+  no config knob that turns a term into a gate.
 
 ## Config-driven registration (a provider score signal, no Go code)
 
 Steps 1–2 above compile a custom signal into the binary. A provider that just
 needs a **0–100 dimension score** does not have to: it registers a generic
 `scorecontainer` signal from config and hydrates it over the import API, with no
-Go code at all.
+Go code at all. Such a signal is always a **term, never a gate** — "no Go code at
+all" means it contributes to the dimension average and cannot cap it. A hard stop
+is a code-level gate (see "Term or gate?" above), not a config entry.
 
 Point the runtime config at a score-signals file (a relative path resolves
 against the config file's directory, like the profile paths):
