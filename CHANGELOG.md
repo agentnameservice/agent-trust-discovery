@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.5](https://github.com/agentnameservice/agent-trust-discovery/compare/v0.1.4...v0.1.5) (2026-11-06)
+
+
+### Features
+
+* **signals:** add OpenShell policy-adherence signal as an opt-in example ([#36](https://github.com/agentnameservice/agent-trust-discovery/issues/36)) ([1d53162](https://github.com/agentnameservice/agent-trust-discovery/commit/1d5316215f5b90449db34f9871c65de6cd92c8f0)), closes [#35](https://github.com/agentnameservice/agent-trust-discovery/issues/35)
+
+
+### Documentation
+
+* state that config-registered signals are terms, never gates (refs [#24](https://github.com/agentnameservice/agent-trust-discovery/issues/24)) ([#30](https://github.com/agentnameservice/agent-trust-discovery/issues/30)) ([9821294](https://github.com/agentnameservice/agent-trust-discovery/commit/9821294e5dcb0e72c1356eb310569e9cbbfa0493))
+
 ## [0.1.4](https://github.com/agentnameservice/agent-trust-discovery/compare/v0.1.3...v0.1.4) (2026-11-05)
 
 
