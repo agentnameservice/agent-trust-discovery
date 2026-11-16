@@ -1,0 +1,20 @@
+# OpenShell policy-adherence signal for agent-trust-discovery (OPT-IN EXAMPLE).
+#
+# NVIDIA OpenShell enforces a network policy for each sandbox and reports its
+# policy decisions as OCSF audit events. The ans-openshell hydrator turns an
+# agent's allowed, denied and audited decisions into a 0..100 policy-adherence
+# score and POSTs {score, explanation} observations for the id below to
+# /v1/internal/observations/import. Registered with NO Go code, as a
+# config-driven entry of the shared scorecontainer (#16).
+#
+# To use: merge this entry into the file your runtime config's `signals.path`
+# points at, and copy config/examples/openshell-profile.yaml into
+# config/profiles/ (or add its signal weight to your own profile). Keep the
+# weight at 0 until stale observations can be invalidated; see
+# docs/openshell-signals.md.
+signals:
+  - id: openshell.behavior.activity
+    dimension: behavior
+    # 0 disables the generic BEHAVIOR_OPENSHELL_SCORE_LOW code: the score is an
+    # adherence rate, not a pass/fail verdict.
+    threshold: 0

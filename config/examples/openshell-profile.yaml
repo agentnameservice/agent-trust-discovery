@@ -1,0 +1,32 @@
+# OpenShell policy-adherence profile for agent-trust-discovery (OPT-IN EXAMPLE).
+#
+# This lives under config/examples/ so it is NOT auto-loaded. To use it, copy
+# this file into config/profiles/ (every *.yaml there is loaded and selectable
+# via ?profile=), or copy its signal weight into your own profile.
+#
+# Extends the shipped default-profile.yaml with the OpenShell signal in an
+# observe-only state. The signal's score appears in the response, but at weight
+# 0 it contributes neither score nor risk (§4.2), and a dimension with no
+# weighted signal stays out of the recommendedProfile cascade (§4.6). The trust
+# vector, risk factors and recommendedProfile therefore match the shipped
+# default profile. Raise the weight only once stale observations can be
+# invalidated; see docs/openshell-signals.md.
+name: openshell
+dimensionWeights:
+  integrity: 1.0   # ANS built-ins
+  identity:  1.0   # ANS built-ins
+  solvency:  0.0   # empty in v1; no signals registered
+  behavior:  1.0   # gate on; inactive while every behavior signal has weight 0
+  safety:    0.0   # empty in v1; no signals registered
+signalWeights:
+  # ── ANS built-ins (unchanged) ──
+  certtype:                 1.0
+  dnssecurity:              1.0
+  agentage:                 1.0
+  versionstability:         1.0
+  certfingerprint.server:   1.0
+  certfingerprint.identity: 1.0
+  dnsrecord.ans:            1.0
+  dnsrecord.ans-badge:      1.0
+  # ── OpenShell signal (vendor.dimension.name) ──
+  openshell.behavior.activity: 0.0   # behavior; observe-only
